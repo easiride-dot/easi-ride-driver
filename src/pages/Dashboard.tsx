@@ -144,7 +144,7 @@ export default function Dashboard() {
   }, []);
 
   const enableNotifications = async () => {
-    const { user } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     try {
       await subscribeToPushNotifications(user.id);
