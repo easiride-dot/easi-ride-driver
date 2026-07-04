@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Power, Wifi, WifiOff, Car, Bell } from "lucide-react";
+import { Power, Wifi, WifiOff, Car, Bell, BellRing, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn, formatTime } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -9,6 +9,7 @@ import { useRideRequest } from "@/hooks/useRideRequest";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { RideRequestModal } from "@/components/RideRequestModal";
 import { Badge } from "@/components/ui/badge";
+import { subscribeToPushNotifications, getExistingPushSubscription } from "@/lib/pushNotifications";
 
 export default function Dashboard() {
   const { driver } = useAuth();
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date().toISOString());
+  const [pushState, setPushState] = useState<"loading" | "prompt" | "enabled" | "unsupported">("loading");
 
   const { startWatching, stopWatching } = useGeolocation(null);
   const { incomingRide, acceptRide, declineRide } = useRideRequest({
@@ -122,6 +124,37 @@ export default function Dashboard() {
     toast("Ride declined.");
   };
 
+  // Check push notification state
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      setPushState("unsupported");
+      return;
+    }
+    if (!import.meta.env.VITE_VAPID_PUBLIC_KEY) {
+      setPushState("unsupported");
+      return;
+    }
+    if (Notification.permission === "denied") {
+      setPushState("unsupported");
+      return;
+    }
+    getExistingPushSubscription().then((sub) => {
+      setPushState(sub ? "enabled" : "prompt");
+    });
+  }, []);
+
+  const enableNotifications = async () => {
+    const { user } = await supabase.auth.getUser();
+    if (!user) return;
+    try {
+      await subscribeToPushNotifications(user.id);
+      setPushState("enabled");
+      toast.success("Push notifications enabled");
+    } catch {
+      toast.error("Could not enable notifications. Check your browser settings.");
+    }
+  };
+
   const firstName = driver?.full_name?.split(" ")[0] ?? "Driver";
   const hour = new Date().getHours();
   const greeting =
@@ -177,6 +210,29 @@ export default function Dashboard() {
 
       {/* Main content */}
       <div className="px-5 space-y-5">
+        {/* Push notification enable banner */}
+        {pushState === "prompt" && (
+          <div className="glass-card rounded-3xl p-4 border border-primary/20 bg-primary/5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+                <BellRing className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">Enable notifications</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Get instantly notified of new ride requests
+                </p>
+              </div>
+              <button
+                onClick={enableNotifications}
+                className="shrink-0 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Enable
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* GO ONLINE / OFFLINE toggle */}
         <div className="glass-card rounded-3xl p-6 shadow-elevated">
           <div className="flex flex-col items-center text-center">

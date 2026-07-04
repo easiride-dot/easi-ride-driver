@@ -18,6 +18,11 @@ export const registerServiceWorker = async () => {
   return navigator.serviceWorker.register("/sw.js");
 };
 
+export const getExistingPushSubscription = async () => {
+  const registration = await navigator.serviceWorker.ready;
+  return registration.pushManager.getSubscription();
+};
+
 export const subscribeToPushNotifications = async (userId: string) => {
   await registerServiceWorker();
   const registration = await navigator.serviceWorker.ready;
