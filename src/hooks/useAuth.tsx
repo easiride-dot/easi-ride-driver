@@ -7,6 +7,7 @@ import {
 } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { registerServiceWorker, subscribeToPushNotifications } from "@/lib/pushNotifications";
 
 export interface Driver {
   id: string;
@@ -75,6 +76,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    subscribeIfPossible(user.id);
+  }, [user]);
+
+const subscribeIfPossible = async (userId: string) => {
+  if (typeof window === "undefined") return;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
+  if (!import.meta.env.VITE_VAPID_PUBLIC_KEY) return;
+  if (Notification.permission !== "granted") return;
+  try {
+    const registration = await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.ready;
+    const existing = await registration.pushManager.getSubscription();
+    if (existing) return;
+    await subscribeToPushNotifications(userId);
+  } catch {
+    // Silent fail
+  }
+};
 
   const signOut = async () => {
     await supabase.auth.signOut();
