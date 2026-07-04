@@ -36,19 +36,23 @@ export function useGeolocation(rideId?: string | null) {
       if (!user) return;
       const { coords } = pos;
 
-      await supabase.from("driver_locations").upsert(
-        {
-          driver_id: user.id,
-          ride_id: rideId ?? null,
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          accuracy: coords.accuracy,
-          heading: coords.heading,
-          speed: coords.speed,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "driver_id" }
-      );
+      try {
+        await supabase.from("driver_locations").upsert(
+          {
+            driver_id: user.id,
+            ride_id: rideId ?? null,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            accuracy: coords.accuracy,
+            heading: coords.heading,
+            speed: coords.speed,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "driver_id" }
+        );
+      } catch {
+        // location upsert is best-effort
+      }
     },
     [user, rideId]
   );

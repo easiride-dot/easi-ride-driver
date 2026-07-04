@@ -42,6 +42,8 @@ interface UseGeofenceOptions {
 
 export function useGeofence({ ride, geoState, onStatusChange }: UseGeofenceOptions) {
   const processingRef = useRef(false);
+  const rideRef = useRef(ride);
+  rideRef.current = ride;
 
   const transitionStatus = useCallback(
     async (rideId: string, newStatus: RideStatus, extraFields: Record<string, string>) => {
@@ -76,62 +78,47 @@ export function useGeofence({ ride, geoState, onStatusChange }: UseGeofenceOptio
   );
 
   useEffect(() => {
-    if (!ride || !geoState.latitude || !geoState.longitude) return;
+    const r = rideRef.current;
+    if (!r || !geoState.latitude || !geoState.longitude) return;
 
     const driverLat = geoState.latitude;
     const driverLon = geoState.longitude;
-
     const now = new Date().toISOString();
 
-    // ── accepted → driver_arrived ──────────────────────────────────────
+    // ── driver_assigned → driver_arrived ──────────────────────────────
     if (
-      ride.status === "accepted" &&
-      ride.pickup_latitude != null &&
-      ride.pickup_longitude != null
+      r.status === "driver_assigned" &&
+      r.pickup_latitude != null &&
+      r.pickup_longitude != null
     ) {
-      const distToPickup = haversineMetres(
-        driverLat,
-        driverLon,
-        ride.pickup_latitude,
-        ride.pickup_longitude
-      );
+      const distToPickup = haversineMetres(driverLat, driverLon, r.pickup_latitude, r.pickup_longitude);
       if (distToPickup <= PICKUP_ARRIVE_THRESHOLD) {
-        transitionStatus(ride.id, "driver_arrived", { pickup_arrived_at: now });
+        transitionStatus(r.id, "driver_arrived", { pickup_arrived_at: now });
       }
     }
 
     // ── driver_arrived → in_progress ──────────────────────────────────
     if (
-      ride.status === "driver_arrived" &&
-      ride.pickup_latitude != null &&
-      ride.pickup_longitude != null
+      r.status === "driver_arrived" &&
+      r.pickup_latitude != null &&
+      r.pickup_longitude != null
     ) {
-      const distToPickup = haversineMetres(
-        driverLat,
-        driverLon,
-        ride.pickup_latitude,
-        ride.pickup_longitude
-      );
+      const distToPickup = haversineMetres(driverLat, driverLon, r.pickup_latitude, r.pickup_longitude);
       if (distToPickup > PICKUP_DEPART_THRESHOLD) {
-        transitionStatus(ride.id, "in_progress", { in_progress_at: now });
+        transitionStatus(r.id, "in_progress", { in_progress_at: now });
       }
     }
 
     // ── in_progress → completed ────────────────────────────────────────
     if (
-      ride.status === "in_progress" &&
-      ride.destination_latitude != null &&
-      ride.destination_longitude != null
+      r.status === "in_progress" &&
+      r.destination_latitude != null &&
+      r.destination_longitude != null
     ) {
-      const distToDest = haversineMetres(
-        driverLat,
-        driverLon,
-        ride.destination_latitude,
-        ride.destination_longitude
-      );
+      const distToDest = haversineMetres(driverLat, driverLon, r.destination_latitude, r.destination_longitude);
       if (distToDest <= DESTINATION_ARRIVE_THRESHOLD) {
-        transitionStatus(ride.id, "completed", { completed_at: now });
+        transitionStatus(r.id, "completed", { completed_at: now });
       }
     }
-  }, [geoState.latitude, geoState.longitude, ride, transitionStatus]);
+  }, [geoState.latitude, geoState.longitude, ride?.status, transitionStatus]);
 }

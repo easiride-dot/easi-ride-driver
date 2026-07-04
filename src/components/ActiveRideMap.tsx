@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -109,6 +109,7 @@ export function ActiveRideMap({
   showDestination = true,
 }: ActiveRideMapProps) {
   const [routePolyline, setRoutePolyline] = useState<[number, number][]>([]);
+  const lastRouteFetch = useRef(0);
 
   const driverPos = useMemo<[number, number] | null>(
     () => (driverLat != null && driverLon != null ? [driverLat, driverLon] : null),
@@ -146,6 +147,10 @@ export function ActiveRideMap({
       setRoutePolyline([]);
       return;
     }
+
+    const now = Date.now();
+    if (now - lastRouteFetch.current < 5000) return;
+    lastRouteFetch.current = now;
 
     const fetchRoute = async () => {
       try {

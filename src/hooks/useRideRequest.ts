@@ -70,18 +70,20 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
       });
     };
 
-    const checkForPending = () => {
-      supabase
-        .from("rides")
-        .select("*")
-        .eq("driver_id", user.id)
-        .eq("status", "pending_driver_acceptance")
-        .limit(1)
-        .then(({ data }) => {
-          if (data && data.length > 0) {
-            handleRideUpdate(data[0] as unknown as Record<string, unknown>);
-          }
-        });
+    const checkForPending = async () => {
+      try {
+        const { data } = await supabase
+          .from("rides")
+          .select("*")
+          .eq("driver_id", user.id)
+          .eq("status", "pending_driver_acceptance")
+          .limit(1);
+        if (data && data.length > 0) {
+          handleRideUpdate(data[0] as unknown as Record<string, unknown>);
+        }
+      } catch {
+        // fallback query silent
+      }
     };
 
     checkPendingRef.current = checkForPending;
