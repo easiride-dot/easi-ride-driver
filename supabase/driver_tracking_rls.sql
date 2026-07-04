@@ -1,0 +1,67 @@
+-- ============================================================
+-- EASI RIDE — DRIVER TRACKING RLS POLICIES
+-- Run ALL of this in the Supabase SQL editor
+-- ============================================================
+
+-- 0. Add UNIQUE constraint on driver_locations.driver_id (required for upsert)
+DROP INDEX IF EXISTS idx_driver_locations_driver_id;
+ALTER TABLE driver_locations
+  ADD CONSTRAINT driver_locations_driver_id_key UNIQUE (driver_id);
+
+-- 1. Ensure driver_id column exists on rides (for student app tracking)
+ALTER TABLE rides
+  ADD COLUMN IF NOT EXISTS driver_id uuid REFERENCES drivers(id) ON DELETE SET NULL;
+
+-- 2. Allow assigned driver to see their rides (needed for realtime subscription)
+DROP POLICY IF EXISTS "Driver reads assigned rides" ON rides;
+CREATE POLICY "Driver reads assigned rides"
+  ON rides FOR SELECT
+  USING (
+    driver_id = auth.uid()
+  );
+
+-- 3. Allow the ride's student (user_id) to read their assigned driver's location
+DROP POLICY IF EXISTS "Ride owner reads driver location" ON driver_locations;
+CREATE POLICY "Ride owner reads driver location"
+  ON driver_locations FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM rides
+      WHERE rides.driver_id = driver_locations.driver_id
+        AND rides.user_id = auth.uid()
+    )
+  );
+
+-- 4. Allow students to read their assigned driver's info from the drivers table
+DROP POLICY IF EXISTS "Ride owner reads assigned driver" ON drivers;
+CREATE POLICY "Ride owner reads assigned driver"
+  ON drivers FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM rides
+      WHERE rides.driver_id = drivers.id
+        AND rides.user_id = auth.uid()
+    )
+  );
+
+-- 5. Ensure realtime is enabled for both tables
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'rides'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE rides;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'driver_locations'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE driver_locations;
+  END IF;
+END $$;
+
+-- ============================================================
+-- END
+-- ============================================================

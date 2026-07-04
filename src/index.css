@@ -1,0 +1,169 @@
+@import "leaflet/dist/leaflet.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Easi Ride Design System — Black / Grey / Soft White */
+
+@layer base {
+  :root {
+    /* Core surface palette */
+    --background: 0 0% 4%;            /* #0B0B0B */
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 10%;                 /* #1A1A1A */
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 0% 98%;              /* soft white CTA */
+    --primary-foreground: 0 0% 6%;
+
+    --secondary: 0 0% 16%;            /* #2A2A2A */
+    --secondary-foreground: 0 0% 92%;
+
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 18%;
+    --input: 0 0% 14%;
+    --ring: 0 0% 80%;
+
+    --radius: 1rem;
+
+    /* Custom tokens */
+    --surface-elevated: 0 0% 12%;
+    --surface-strong: 0 0% 16%;
+    --hairline: 0 0% 22%;
+
+    --gradient-hero: radial-gradient(ellipse 80% 60% at 50% 0%, hsl(0 0% 16% / 0.9), hsl(0 0% 4%) 70%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 11%), hsl(0 0% 8%));
+    --gradient-glow: radial-gradient(circle at 30% 20%, hsl(0 0% 100% / 0.06), transparent 60%);
+
+    --shadow-soft: 0 1px 0 0 hsl(0 0% 100% / 0.04) inset, 0 10px 30px -12px hsl(0 0% 0% / 0.6);
+    --shadow-elevated: 0 1px 0 0 hsl(0 0% 100% / 0.06) inset, 0 30px 60px -20px hsl(0 0% 0% / 0.8);
+    --shadow-cta: 0 10px 30px -10px hsl(0 0% 100% / 0.25);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply bg-background;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "ss01", "cv11";
+    background-image: var(--gradient-glow);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: hsl(0 0% 98%);
+    color: hsl(0 0% 6%);
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: var(--gradient-card);
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-soft);
+  }
+
+  .hairline {
+    border-color: hsl(var(--hairline));
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .animate-pulse-slow {
+    animation: pulse-slow 2.4s ease-in-out infinite;
+  }
+  .animate-fade-up {
+    animation: fade-up 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  .animate-ping-slow {
+    animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ping-slow {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+
+/* Custom Leaflet Dark Mode tweaks & UI overrides */
+.leaflet-container {
+  background-color: #0b0b0b !important;
+  font-family: inherit;
+}
+
+.leaflet-bar {
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: var(--shadow-soft) !important;
+  border-radius: 0.5rem !important;
+  overflow: hidden;
+}
+
+.leaflet-bar a {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
+  border-top: 0 !important;
+  border-left: 0 !important;
+  border-right: 0 !important;
+  transition: background-color 0.2s ease;
+}
+
+.leaflet-bar a:hover {
+  background-color: hsl(var(--secondary)) !important;
+}
+
+.leaflet-bar a.leaflet-disabled {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem !important;
+  box-shadow: var(--shadow-elevated) !important;
+}
+
+.leaflet-popup-tip {
+  background-color: hsl(var(--card)) !important;
+  border-left: 1px solid hsl(var(--border));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.leaflet-control-attribution {
+  background: rgba(11, 11, 11, 0.7) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  font-size: 9px !important;
+}
