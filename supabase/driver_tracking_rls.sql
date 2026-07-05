@@ -3,8 +3,9 @@
 -- Run ALL of this in the Supabase SQL editor
 -- ============================================================
 
--- 0. Add UNIQUE constraint on driver_locations.driver_id (required for upsert)
+-- 0. Ensure UNIQUE constraint on driver_locations.driver_id (required for upsert)
 DROP INDEX IF EXISTS idx_driver_locations_driver_id;
+ALTER TABLE driver_locations DROP CONSTRAINT IF EXISTS driver_locations_driver_id_key;
 ALTER TABLE driver_locations
   ADD CONSTRAINT driver_locations_driver_id_key UNIQUE (driver_id);
 
