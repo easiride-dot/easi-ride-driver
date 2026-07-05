@@ -115,7 +115,15 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
 
   const acceptRide = useCallback(
     async (rideId: string, studentUserId?: string) => {
-      const { error } = await supabase.rpc("accept_ride", { p_ride_id: rideId });
+      const { error } = await supabase
+        .from("rides")
+        .update({
+          status: "driver_assigned",
+          driver_accepted_at: new Date().toISOString(),
+          eta_minutes: 5 + Math.floor(Math.random() * 10),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", rideId);
 
       if (error) return false;
 
@@ -153,7 +161,15 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
 
   const declineRide = useCallback(
     async (rideId: string) => {
-      const { error } = await supabase.rpc("decline_ride", { p_ride_id: rideId });
+      const { error } = await supabase
+        .from("rides")
+        .update({
+          status: "pool_locked_awaiting_driver",
+          driver_declined_at: new Date().toISOString(),
+          driver_id: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", rideId);
 
       if (!error) {
         clearIncoming();

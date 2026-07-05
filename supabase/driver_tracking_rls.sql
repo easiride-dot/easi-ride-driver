@@ -44,12 +44,19 @@ CREATE POLICY "Ride owner reads assigned driver"
     )
   );
 
--- 5. Allow driver to update rides they are assigned to (accept/decline/geofence)
-DROP POLICY IF EXISTS "Driver updates assigned rides" ON rides;
-CREATE POLICY "Driver updates assigned rides"
+-- 5a. Allow driver to accept or transition a ride they are assigned to (driver_id stays the same)
+DROP POLICY IF EXISTS "Driver updates assigned ride status" ON rides;
+CREATE POLICY "Driver updates assigned ride status"
   ON rides FOR UPDATE
   USING (driver_id = auth.uid())
   WITH CHECK (driver_id = auth.uid());
+
+-- 5b. Allow driver to decline an assigned ride (clears driver_id)
+DROP POLICY IF EXISTS "Driver declines assigned ride" ON rides;
+CREATE POLICY "Driver declines assigned ride"
+  ON rides FOR UPDATE
+  USING (driver_id = auth.uid())
+  WITH CHECK (driver_id IS NULL);
 
 -- 6. Allow driver to read the name of students assigned to them
 DROP POLICY IF EXISTS "Driver reads assigned student profile" ON profiles;
@@ -80,93 +87,6 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE driver_locations;
   END IF;
 END $$;
-
--- 8. SECURITY DEFINER functions to bypass RLS for driver accept/decline/geofence
---    These run with the privileges of the function owner, bypassing RLS.
-
-CREATE OR REPLACE FUNCTION decline_ride(p_ride_id uuid)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  UPDATE rides
-  SET status = 'pool_locked_awaiting_driver',
-      driver_declined_at = now(),
-      driver_id = NULL,
-      updated_at = now()
-  WHERE id = p_ride_id
-    AND driver_id = auth.uid();
-  RETURN FOUND;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION accept_ride(p_ride_id uuid)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  UPDATE rides
-  SET status = 'driver_assigned',
-      driver_accepted_at = now(),
-      eta_minutes = 5 + floor(random() * 10)::int,
-      updated_at = now()
-  WHERE id = p_ride_id
-    AND driver_id = auth.uid();
-  RETURN FOUND;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION transition_ride_to_arrived(p_ride_id uuid, p_arrived_at timestamptz)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  UPDATE rides
-  SET status = 'driver_arrived',
-      pickup_arrived_at = p_arrived_at,
-      updated_at = now()
-  WHERE id = p_ride_id AND driver_id = auth.uid();
-  RETURN FOUND;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION transition_ride_to_in_progress(p_ride_id uuid, p_in_progress_at timestamptz)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  UPDATE rides
-  SET status = 'in_progress',
-      in_progress_at = p_in_progress_at,
-      updated_at = now()
-  WHERE id = p_ride_id AND driver_id = auth.uid();
-  RETURN FOUND;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION transition_ride_to_completed(p_ride_id uuid, p_completed_at timestamptz)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  UPDATE rides
-  SET status = 'completed',
-      completed_at = p_completed_at,
-      updated_at = now()
-  WHERE id = p_ride_id AND driver_id = auth.uid();
-  RETURN FOUND;
-END;
-$$;
 
 -- ============================================================
 -- END
