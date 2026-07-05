@@ -46,21 +46,23 @@ export function useGeofence({ ride, geoState, onStatusChange }: UseGeofenceOptio
   rideRef.current = ride;
 
   const transitionStatus = useCallback(
-    async (rideId: string, newStatus: RideStatus, extraFields: Record<string, string>) => {
+    async (rideId: string, newStatus: RideStatus) => {
       if (processingRef.current) return;
       processingRef.current = true;
 
       try {
-        const updatePayload: Record<string, unknown> = {
-          status: newStatus,
-          updated_at: new Date().toISOString(),
-          ...extraFields,
-        };
-
-        const { error } = await supabase
-          .from("rides")
-          .update(updatePayload)
-          .eq("id", rideId);
+        const now = new Date().toISOString();
+        let result;
+        if (newStatus === "driver_arrived") {
+          result = await supabase.rpc("transition_ride_to_arrived", { p_ride_id: rideId, p_arrived_at: now });
+        } else if (newStatus === "in_progress") {
+          result = await supabase.rpc("transition_ride_to_in_progress", { p_ride_id: rideId, p_in_progress_at: now });
+        } else if (newStatus === "completed") {
+          result = await supabase.rpc("transition_ride_to_completed", { p_ride_id: rideId, p_completed_at: now });
+        } else {
+          return;
+        }
+        const { error } = result;
 
         if (!error) {
           onStatusChange?.(newStatus);
@@ -68,7 +70,6 @@ export function useGeofence({ ride, geoState, onStatusChange }: UseGeofenceOptio
           console.error("Geofence status update failed:", error);
         }
       } finally {
-        // Small delay to prevent rapid re-triggers
         setTimeout(() => {
           processingRef.current = false;
         }, 3000);
@@ -83,7 +84,6 @@ export function useGeofence({ ride, geoState, onStatusChange }: UseGeofenceOptio
 
     const driverLat = geoState.latitude;
     const driverLon = geoState.longitude;
-    const now = new Date().toISOString();
 
     // ── driver_assigned → driver_arrived ──────────────────────────────
     if (
@@ -93,7 +93,7 @@ export function useGeofence({ ride, geoState, onStatusChange }: UseGeofenceOptio
     ) {
       const distToPickup = haversineMetres(driverLat, driverLon, r.pickup_latitude, r.pickup_longitude);
       if (distToPickup <= PICKUP_ARRIVE_THRESHOLD) {
-        transitionStatus(r.id, "driver_arrived", { pickup_arrived_at: now });
+        transitionStatus(r.id, "driver_arrived");
       }
     }
 
@@ -105,7 +105,7 @@ export function useGeofence({ ride, geoState, onStatusChange }: UseGeofenceOptio
     ) {
       const distToPickup = haversineMetres(driverLat, driverLon, r.pickup_latitude, r.pickup_longitude);
       if (distToPickup > PICKUP_DEPART_THRESHOLD) {
-        transitionStatus(r.id, "in_progress", { in_progress_at: now });
+        transitionStatus(r.id, "in_progress");
       }
     }
 
@@ -117,7 +117,7 @@ export function useGeofence({ ride, geoState, onStatusChange }: UseGeofenceOptio
     ) {
       const distToDest = haversineMetres(driverLat, driverLon, r.destination_latitude, r.destination_longitude);
       if (distToDest <= DESTINATION_ARRIVE_THRESHOLD) {
-        transitionStatus(r.id, "completed", { completed_at: now });
+        transitionStatus(r.id, "completed");
       }
     }
   }, [geoState.latitude, geoState.longitude, ride?.status, transitionStatus]);

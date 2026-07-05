@@ -81,6 +81,93 @@ BEGIN
   END IF;
 END $$;
 
+-- 8. SECURITY DEFINER functions to bypass RLS for driver accept/decline/geofence
+--    These run with the privileges of the function owner, bypassing RLS.
+
+CREATE OR REPLACE FUNCTION decline_ride(p_ride_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE rides
+  SET status = 'pool_locked_awaiting_driver',
+      driver_declined_at = now(),
+      driver_id = NULL,
+      updated_at = now()
+  WHERE id = p_ride_id
+    AND driver_id = auth.uid();
+  RETURN FOUND;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION accept_ride(p_ride_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE rides
+  SET status = 'driver_assigned',
+      driver_accepted_at = now(),
+      eta_minutes = 5 + floor(random() * 10)::int,
+      updated_at = now()
+  WHERE id = p_ride_id
+    AND driver_id = auth.uid();
+  RETURN FOUND;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION transition_ride_to_arrived(p_ride_id uuid, p_arrived_at timestamptz)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE rides
+  SET status = 'driver_arrived',
+      pickup_arrived_at = p_arrived_at,
+      updated_at = now()
+  WHERE id = p_ride_id AND driver_id = auth.uid();
+  RETURN FOUND;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION transition_ride_to_in_progress(p_ride_id uuid, p_in_progress_at timestamptz)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE rides
+  SET status = 'in_progress',
+      in_progress_at = p_in_progress_at,
+      updated_at = now()
+  WHERE id = p_ride_id AND driver_id = auth.uid();
+  RETURN FOUND;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION transition_ride_to_completed(p_ride_id uuid, p_completed_at timestamptz)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE rides
+  SET status = 'completed',
+      completed_at = p_completed_at,
+      updated_at = now()
+  WHERE id = p_ride_id AND driver_id = auth.uid();
+  RETURN FOUND;
+END;
+$$;
+
 -- ============================================================
 -- END
 -- ============================================================
