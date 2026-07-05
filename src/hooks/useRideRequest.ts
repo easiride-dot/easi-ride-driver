@@ -48,7 +48,7 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
           .from("profiles")
           .select("full_name")
           .eq("id", ride.user_id as string)
-          .single();
+          .maybeSingle();
         if (profile?.full_name) {
           studentName = profile.full_name.split(" ")[0];
         }

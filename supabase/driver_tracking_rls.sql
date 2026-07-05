@@ -44,7 +44,26 @@ CREATE POLICY "Ride owner reads assigned driver"
     )
   );
 
--- 5. Ensure realtime is enabled for both tables
+-- 5. Allow driver to update rides they are assigned to (accept/decline/geofence)
+DROP POLICY IF EXISTS "Driver updates assigned rides" ON rides;
+CREATE POLICY "Driver updates assigned rides"
+  ON rides FOR UPDATE
+  USING (driver_id = auth.uid())
+  WITH CHECK (driver_id = auth.uid());
+
+-- 6. Allow driver to read the name of students assigned to them
+DROP POLICY IF EXISTS "Driver reads assigned student profile" ON profiles;
+CREATE POLICY "Driver reads assigned student profile"
+  ON profiles FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM rides
+      WHERE rides.user_id = profiles.id
+        AND rides.driver_id = auth.uid()
+    )
+  );
+
+-- 7. Ensure realtime is enabled for both tables
 DO $$
 BEGIN
   IF NOT EXISTS (
