@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { subscribeToPushNotifications, getExistingPushSubscription } from "@/lib/pushNotifications";
 
 export default function Dashboard() {
-  const { driver } = useAuth();
+  const { user, driver } = useAuth();
   const navigate = useNavigate();
   const [isOnline, setIsOnline] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);

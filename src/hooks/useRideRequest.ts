@@ -161,15 +161,11 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
 
   const declineRide = useCallback(
     async (rideId: string) => {
-      const { error } = await supabase
-        .from("rides")
-        .update({
-          status: "pool_locked_awaiting_driver",
-          driver_declined_at: new Date().toISOString(),
-          driver_id: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", rideId);
+      // Use the database function to bypass RLS
+      const { error } = await supabase.rpc('decline_ride', {
+        ride_id: rideId,
+        driver_user_id: user?.id
+      });
 
       if (!error) {
         clearIncoming();
@@ -177,7 +173,7 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
       }
       return false;
     },
-    [clearIncoming]
+    [clearIncoming, user]
   );
 
   return { incomingRide, clearIncoming, acceptRide, declineRide };

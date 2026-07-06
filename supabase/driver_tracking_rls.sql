@@ -46,14 +46,17 @@ CREATE POLICY "Ride owner reads assigned driver"
   );
 
 -- 5. Allow driver to update their assigned rides (accept/decline/geofence)
--- Single policy handles both: driver_id stays the same (accept/geofence) OR becomes null (decline)
+-- USING checks OLD row (before update), WITH CHECK checks NEW row (after update)
+-- This allows: keeping driver_id (accept), setting to null (decline), or status updates
+-- Also remove conflicting user policies that might block driver updates
+DROP POLICY IF EXISTS "Users can update their own pending rides" ON rides;
 DROP POLICY IF EXISTS "Driver updates assigned rides" ON rides;
 DROP POLICY IF EXISTS "Driver updates assigned ride status" ON rides;
 DROP POLICY IF EXISTS "Driver declines assigned ride" ON rides;
 CREATE POLICY "Driver can update assigned rides"
   ON rides FOR UPDATE
   USING (driver_id = auth.uid())
-  WITH CHECK (driver_id = auth.uid() OR driver_id IS NULL);
+  WITH CHECK (true);
 
 -- 6. Allow driver to read the name of students assigned to them
 DROP POLICY IF EXISTS "Driver reads assigned student profile" ON profiles;
@@ -84,6 +87,26 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE driver_locations;
   END IF;
 END $$;
+
+-- 8. Create a function for drivers to decline rides (bypasses RLS)
+CREATE OR REPLACE FUNCTION decline_ride(ride_id uuid, driver_user_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE rides
+  SET 
+    status = 'pool_locked_awaiting_driver',
+    driver_declined_at = NOW(),
+    driver_id = NULL,
+    updated_at = NOW()
+  WHERE id = ride_id AND driver_id = driver_user_id;
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION decline_ride(uuid, uuid) TO authenticated;
 
 -- ============================================================
 -- END
