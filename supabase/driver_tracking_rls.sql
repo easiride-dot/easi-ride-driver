@@ -45,19 +45,15 @@ CREATE POLICY "Ride owner reads assigned driver"
     )
   );
 
--- 5a. Allow driver to accept or transition a ride they are assigned to (driver_id stays the same)
+-- 5. Allow driver to update their assigned rides (accept/decline/geofence)
+-- Single policy handles both: driver_id stays the same (accept/geofence) OR becomes null (decline)
+DROP POLICY IF EXISTS "Driver updates assigned rides" ON rides;
 DROP POLICY IF EXISTS "Driver updates assigned ride status" ON rides;
-CREATE POLICY "Driver updates assigned ride status"
-  ON rides FOR UPDATE
-  USING (driver_id = auth.uid())
-  WITH CHECK (driver_id = auth.uid());
-
--- 5b. Allow driver to decline an assigned ride (clears driver_id)
 DROP POLICY IF EXISTS "Driver declines assigned ride" ON rides;
-CREATE POLICY "Driver declines assigned ride"
+CREATE POLICY "Driver can update assigned rides"
   ON rides FOR UPDATE
   USING (driver_id = auth.uid())
-  WITH CHECK (driver_id IS NULL);
+  WITH CHECK (driver_id = auth.uid() OR driver_id IS NULL);
 
 -- 6. Allow driver to read the name of students assigned to them
 DROP POLICY IF EXISTS "Driver reads assigned student profile" ON profiles;
