@@ -1,10 +1,12 @@
-import { User, Phone, Car, Tag, ShieldCheck, HelpCircle, LogOut } from "lucide-react";
+import { User, Phone, Car, Tag, ShieldCheck, HelpCircle, LogOut, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { openWhatsApp } from "@/lib/utils";
 
 export default function Profile() {
   const { driver, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const handleSignOut = () => {
     signOut();
@@ -96,6 +98,26 @@ export default function Profile() {
             Support
           </p>
           <div className="glass-card rounded-3xl p-2 shadow-soft">
+            <button
+              onClick={toggleTheme}
+              className="w-full flex items-center gap-4 p-3 hover:bg-secondary/50 rounded-2xl transition-colors text-left"
+            >
+              <div className="h-10 w-10 rounded-2xl bg-secondary flex items-center justify-center shrink-0">
+                {theme === "dark" ? (
+                  <Sun className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <Moon className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">
+                  {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Switch theme
+                </p>
+              </div>
+            </button>
             <button
               onClick={() => openWhatsApp(undefined, "Hi Easi Ride Support, I need help with my driver account.")}
               className="w-full flex items-center gap-4 p-3 hover:bg-secondary/50 rounded-2xl transition-colors text-left"

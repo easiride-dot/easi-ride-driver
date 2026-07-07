@@ -1,7 +1,6 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, Clock, User, Navigation, Sun, Moon } from "lucide-react";
+import { LayoutDashboard, Clock, User, Navigation } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/hooks/useTheme";
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -12,7 +11,6 @@ const NAV_ITEMS = [
 export function AppShell() {
   const location = useLocation();
   const isActiveRide = location.pathname.startsWith("/ride/");
-  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -66,23 +64,6 @@ export function AppShell() {
                 )}
               </NavLink>
             ))}
-
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-200 text-muted-foreground hover:text-foreground"
-            >
-              <div className="p-1.5 rounded-lg bg-transparent">
-                {theme === "dark" ? (
-                  <Sun className="h-5 w-5 stroke-[1.5px]" />
-                ) : (
-                  <Moon className="h-5 w-5 stroke-[1.5px]" />
-                )}
-              </div>
-              <span className="text-[10px] uppercase tracking-[0.12em] font-medium">
-                {theme === "dark" ? "Light" : "Dark"}
-              </span>
-            </button>
 
             {/* Active ride indicator tab */}
             {isActiveRide && (
