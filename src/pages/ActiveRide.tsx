@@ -219,7 +219,7 @@ export default function ActiveRidePage() {
       </div>
 
       {/* Bottom Sheet Section (40% height) */}
-      <div className="flex-1 relative z-10 -mt-6">
+      <div className="flex-1 relative z-10 -mt-6 overflow-y-auto">
         <BottomSheet 
           ride={ride} 
           className="h-full min-h-full" 
