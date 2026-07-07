@@ -1,4 +1,3 @@
-@import "leaflet/dist/leaflet.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -161,54 +160,7 @@
   75%, 100% { transform: scale(2); opacity: 0; }
 }
 
-/* Custom Leaflet theme tweaks & UI overrides */
-.leaflet-container {
-  background-color: hsl(var(--background)) !important;
-  font-family: inherit;
-}
-
-.leaflet-bar {
-  border: 1px solid hsl(var(--border)) !important;
-  box-shadow: var(--shadow-soft) !important;
-  border-radius: 0.5rem !important;
-  overflow: hidden;
-}
-
-.leaflet-bar a {
-  background-color: hsl(var(--card)) !important;
-  color: hsl(var(--foreground)) !important;
-  border-bottom: 1px solid hsl(var(--border)) !important;
-  border-top: 0 !important;
-  border-left: 0 !important;
-  border-right: 0 !important;
-  transition: background-color 0.2s ease;
-}
-
-.leaflet-bar a:hover {
-  background-color: hsl(var(--secondary)) !important;
-}
-
-.leaflet-bar a.leaflet-disabled {
-  background-color: hsl(var(--muted)) !important;
-  color: hsl(var(--muted-foreground)) !important;
-}
-
-.leaflet-popup-content-wrapper {
-  background-color: hsl(var(--card)) !important;
-  color: hsl(var(--foreground)) !important;
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.75rem !important;
-  box-shadow: var(--shadow-elevated) !important;
-}
-
-.leaflet-popup-tip {
-  background-color: hsl(var(--card)) !important;
-  border-left: 1px solid hsl(var(--border));
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-.leaflet-control-attribution {
-  background: hsl(var(--background) / 0.7) !important;
-  color: hsl(var(--muted-foreground)) !important;
-  font-size: 9px !important;
+/* MapLibre overrides */
+.maplibregl-ctrl-attrib {
+  display: none !important;
 }
