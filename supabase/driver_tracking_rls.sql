@@ -114,6 +114,24 @@ $$;
 -- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION decline_ride(uuid, uuid) TO authenticated;
 
+-- 9. Create a function for drivers to cancel rides (bypasses RLS)
+CREATE OR REPLACE FUNCTION cancel_ride(ride_id uuid, driver_user_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE rides
+  SET 
+    status = 'cancelled',
+    driver_id = NULL,
+    updated_at = NOW()
+  WHERE id = ride_id AND driver_id = driver_user_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION cancel_ride(uuid, uuid) TO authenticated;
+
 -- ============================================================
 -- END
 -- ============================================================

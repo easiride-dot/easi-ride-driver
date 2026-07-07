@@ -139,15 +139,12 @@ export default function ActiveRidePage() {
   };
 
   const handleCancelRide = async () => {
+    if (!driver) return;
     try {
-      const { error } = await supabase
-        .from("rides")
-        .update({ 
-          status: "cancelled", 
-          driver_id: null,
-          updated_at: new Date().toISOString() 
-        })
-        .eq("id", id);
+      const { error } = await supabase.rpc("cancel_ride", {
+        ride_id: id,
+        driver_user_id: driver.id,
+      });
 
       if (error) {
         console.error("Failed to cancel ride:", error);
