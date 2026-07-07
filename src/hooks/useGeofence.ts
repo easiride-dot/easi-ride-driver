@@ -27,6 +27,9 @@ export interface ActiveRide {
   distance_km: number | null;
   fare_amount: number | null;
   driver_id: string | null;
+  user_id: string | null;
+  student_name?: string | null;
+  student_phone?: string | null;
 }
 
 // Geofence thresholds in metres

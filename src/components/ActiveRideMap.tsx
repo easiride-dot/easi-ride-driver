@@ -95,6 +95,7 @@ interface ActiveRideMapProps {
   destinationLon: number | null;
   showPickup?: boolean;
   showDestination?: boolean;
+  onDurationChange?: (duration: number | null) => void;
 }
 
 export function ActiveRideMap({
@@ -107,6 +108,7 @@ export function ActiveRideMap({
   destinationLon,
   showPickup = true,
   showDestination = true,
+  onDurationChange,
 }: ActiveRideMapProps) {
   const [routePolyline, setRoutePolyline] = useState<[number, number][]>([]);
   const lastRouteFetch = useRef(0);
@@ -163,11 +165,15 @@ export function ActiveRideMap({
             ([lon, lat]: [number, number]) => [lat, lon]
           );
           setRoutePolyline(coords);
+          // Pass duration in seconds to parent
+          onDurationChange?.(data.routes[0]?.duration || null);
         } else {
           setRoutePolyline(start && end ? [start, end] : []);
+          onDurationChange?.(null);
         }
       } catch {
         setRoutePolyline(start && end ? [start, end] : []);
+        onDurationChange?.(null);
       }
     };
 

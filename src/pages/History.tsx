@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Clock, MapPin, Navigation, TrendingUp } from "lucide-react";
+import { Clock, MapPin, Navigation, TrendingUp, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { formatRelative, formatNLe, formatDate } from "@/lib/utils";
@@ -19,6 +19,7 @@ export default function History() {
   const { driver } = useAuth();
   const [rides, setRides] = useState<HistoryRide[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (!driver) return;
@@ -39,11 +40,40 @@ export default function History() {
         console.error("Failed to fetch history:", err);
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
     };
 
     fetchHistory();
   }, [driver]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setLoading(true);
+    // Re-trigger the useEffect by updating a dependency or calling fetch directly
+    if (driver) {
+      const fetchHistory = async () => {
+        try {
+          const { data, error } = await supabase
+            .from("rides")
+            .select("id, created_at, pickup, destination, distance_km, fare_amount, status")
+            .eq("driver_id", driver.id)
+            .eq("status", "completed")
+            .order("created_at", { ascending: false })
+            .limit(50);
+
+          if (error) throw error;
+          setRides(data as HistoryRide[]);
+        } catch (err) {
+          console.error("Failed to fetch history:", err);
+        } finally {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      };
+      fetchHistory();
+    }
+  };
 
   const totalEarnings = rides.reduce((sum, ride) => {
     if (!ride.fare_amount) return sum;
@@ -54,12 +84,23 @@ export default function History() {
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
       <div className="px-5 pt-14 pb-6 sticky top-0 bg-background/90 backdrop-blur-md z-10 border-b border-hairline/50">
-        <h1 className="text-2xl font-display font-bold text-foreground">
-          Ride History
-        </h1>
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1">
-          Completed trips
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-display font-bold text-foreground">
+              Ride History
+            </h1>
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1">
+              Completed trips
+            </p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="h-10 w-10 rounded-xl bg-secondary border border-hairline flex items-center justify-center hover:bg-secondary/80 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-5 w-5 text-muted-foreground ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
       <div className="px-5 py-6 space-y-6">

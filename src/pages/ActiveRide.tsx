@@ -17,6 +17,7 @@ export default function ActiveRidePage() {
   const [ride, setRide] = useState<ActiveRide | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
 
   // Watch GPS and automatically upsert to driver_locations
   const geoState = useGeolocation(id);
@@ -46,7 +47,27 @@ export default function ActiveRidePage() {
           return;
         }
 
-        setRide(data as ActiveRide);
+        // Fetch passenger info separately to avoid RLS issues
+        let studentName = null;
+        let studentPhone = null;
+        if (data.user_id) {
+          const { data: profileData } = await supabase
+            .from("profiles")
+            .select("full_name, phone")
+            .eq("id", data.user_id)
+            .single();
+          
+          if (profileData) {
+            studentName = profileData.full_name;
+            studentPhone = profileData.phone;
+          }
+        }
+
+        setRide({
+          ...data,
+          student_name: studentName,
+          student_phone: studentPhone,
+        } as ActiveRide);
       } catch (err) {
         setError("Failed to load ride details.");
       } finally {
@@ -93,6 +114,42 @@ export default function ActiveRidePage() {
       undefined, // uses default support number
       `EMERGENCY: I am a driver (${driver?.full_name}, ${driver?.phone}). I need immediate assistance on ride ${id}.`
     );
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("rides")
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq("id", id);
+
+      if (error) {
+        console.error("Failed to update ride status:", error);
+      }
+    } catch (err) {
+      console.error("Failed to update ride status:", err);
+    }
+  };
+
+  const handleCancelRide = async () => {
+    try {
+      const { error } = await supabase
+        .from("rides")
+        .update({ 
+          status: "cancelled", 
+          driver_id: null,
+          updated_at: new Date().toISOString() 
+        })
+        .eq("id", id);
+
+      if (error) {
+        console.error("Failed to cancel ride:", error);
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (err) {
+      console.error("Failed to cancel ride:", err);
+    }
   };
 
   if (loading) {
@@ -150,20 +207,20 @@ export default function ActiveRidePage() {
           destinationLon={ride.destination_longitude}
           showPickup={!isCompleted && ride.status !== "in_progress"}
           showDestination={!isCompleted}
+          onDurationChange={setEtaSeconds}
         />
-
-        {/* Emergency Button */}
-        <button
-          onClick={handleEmergency}
-          className="absolute bottom-6 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive shadow-[0_0_30px_rgba(239,68,68,0.3)] hover:scale-105 transition-transform"
-        >
-          <MessageSquareWarning className="h-6 w-6 text-white" />
-        </button>
       </div>
 
       {/* Bottom Sheet Section (40% height) */}
       <div className="flex-1 relative z-10 -mt-6">
-        <BottomSheet ride={ride} className="h-full min-h-full" />
+        <BottomSheet 
+          ride={ride} 
+          className="h-full min-h-full" 
+          onEmergency={handleEmergency}
+          onStatusChange={handleStatusChange}
+          etaSeconds={etaSeconds}
+          onCancelRide={handleCancelRide}
+        />
       </div>
     </div>
   );

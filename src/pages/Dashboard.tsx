@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Power, Wifi, WifiOff, Car, Bell, BellRing, X } from "lucide-react";
+import { Power, Wifi, WifiOff, Car, Bell, BellRing, X, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
-import { cn, formatTime } from "@/lib/utils";
+import { cn, formatTime, formatNLe } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { useRideRequest } from "@/hooks/useRideRequest";
@@ -19,6 +19,8 @@ export default function Dashboard() {
   const [toggling, setToggling] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date().toISOString());
   const [pushState, setPushState] = useState<"loading" | "prompt" | "enabled" | "unsupported">("loading");
+  const [totalEarnings, setTotalEarnings] = useState(0);
+  const [todayRides, setTodayRides] = useState(0);
 
   const { startWatching, stopWatching } = useGeolocation(null);
   const { incomingRide, acceptRide, declineRide } = useRideRequest({
@@ -48,6 +50,32 @@ export default function Dashboard() {
         }
       });
   }, [driver, startWatching]);
+
+  // Fetch earnings data
+  useEffect(() => {
+    if (!driver) return;
+    const fetchEarnings = async () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const { data } = await supabase
+        .from("rides")
+        .select("fare_amount, created_at")
+        .eq("driver_id", driver.id)
+        .eq("status", "completed")
+        .gte("created_at", today.toISOString());
+
+      if (data) {
+        const earnings = data.reduce((sum, ride) => {
+          if (!ride.fare_amount) return sum;
+          return sum + Math.floor(ride.fare_amount * 0.8);
+        }, 0);
+        setTotalEarnings(earnings);
+        setTodayRides(data.length);
+      }
+    };
+    fetchEarnings();
+  }, [driver]);
 
   const goOnline = useCallback(async () => {
     if (!driver) return;
@@ -210,6 +238,28 @@ export default function Dashboard() {
 
       {/* Main content */}
       <div className="px-5 space-y-5">
+        {/* Earnings Overview Card */}
+        {(totalEarnings > 0 || todayRides > 0) && (
+          <div className="glass-card rounded-3xl p-5 shadow-soft bg-emerald-500/5 border-emerald-500/20">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20">
+                <TrendingUp className="h-6 w-6 text-emerald-400" strokeWidth={2} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs uppercase tracking-[0.15em] text-emerald-400/80 mb-0.5">
+                  Today's Earnings
+                </p>
+                <p className="text-2xl font-display font-bold text-emerald-400">
+                  {formatNLe(totalEarnings)}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {todayRides} ride{todayRides !== 1 ? 's' : ''} completed
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Push notification enable banner */}
         {pushState === "prompt" && (
           <div className="glass-card rounded-3xl p-4 border border-primary/20 bg-primary/5">
