@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapView, CameraController, LocationMarker, RouteLayer, MapControls } from "@/map";
+import { Source, Layer } from "react-map-gl/maplibre";
 import { MAP_CONFIG } from "@/map/map-style";
 
 const FREETOWN_CENTER: [number, number] = MAP_CONFIG.freetownCenter;
@@ -30,6 +31,7 @@ export function ActiveRideMap({
   onDurationChange,
 }: ActiveRideMapProps) {
   const [routePoints, setRoutePoints] = useState<[number, number][]>([]);
+  const [tripRoutePoints, setTripRoutePoints] = useState<[number, number][]>([]);
   const lastRouteFetch = useRef(0);
 
   const driverPos = useMemo<[number, number] | null>(
@@ -58,6 +60,34 @@ export function ActiveRideMap({
     return pts;
   }, [driverPos, pickupPos, destPos, showPickup, showDestination]);
 
+  // Fetch full trip route (pickup → destination) — static, fetched once
+  useEffect(() => {
+    if (!pickupPos || !destPos) {
+      setTripRoutePoints([]);
+      return;
+    }
+
+    const fetchTripRoute = async () => {
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${pickupPos[1]},${pickupPos[0]};${destPos[1]},${destPos[0]}?overview=full&geometries=geojson`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.code === "Ok" && data.routes?.[0]?.geometry?.coordinates) {
+          const coords: [number, number][] = data.routes[0].geometry.coordinates.map(
+            ([lon, lat]: [number, number]) => [lat, lon]
+          );
+          setTripRoutePoints(coords);
+        }
+      } catch {
+        setTripRoutePoints([pickupPos, destPos]);
+      }
+    };
+
+    fetchTripRoute();
+  }, [pickupPos, destPos]);
+
+  // Fetch active navigation route (driver → pickup or driver → destination)
   useEffect(() => {
     const start = driverPos;
     const end = showPickup && pickupPos ? pickupPos : showDestination && destPos ? destPos : null;
@@ -95,6 +125,18 @@ export function ActiveRideMap({
 
     fetchRoute();
   }, [driverPos, pickupPos, destPos, showPickup, showDestination]);
+
+  const tripGeoJSON = useMemo(() => {
+    if (tripRoutePoints.length < 2) return null;
+    return {
+      type: "Feature" as const,
+      properties: {},
+      geometry: {
+        type: "LineString" as const,
+        coordinates: tripRoutePoints.map(([lat, lon]) => [lon, lat] as [number, number]),
+      },
+    };
+  }, [tripRoutePoints]);
 
   return (
     <div className="relative h-full w-full">
@@ -137,6 +179,25 @@ export function ActiveRideMap({
           />
         )}
 
+        {/* Subtle background trip route (pickup → destination) */}
+        {tripGeoJSON && (
+          <Source id="trip-route" type="geojson" data={tripGeoJSON}>
+            <Layer
+              id="trip-route-line"
+              type="line"
+              source="trip-route"
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": "#ffffff",
+                "line-width": 3,
+                "line-opacity": 0.3,
+                "line-blur": 1,
+              }}
+            />
+          </Source>
+        )}
+
+        {/* Active navigation route (driver → pickup/destination) */}
         {routePoints.length > 1 && <RouteLayer points={routePoints} />}
 
         <MapControls />
