@@ -47,19 +47,23 @@ export default function ActiveRidePage() {
           return;
         }
 
-        // Fetch passenger info separately to avoid RLS issues
+        // Fetch passenger info separately (best-effort — profile might not be accessible)
         let studentName = null;
         let studentPhone = null;
         if (data.user_id) {
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("full_name, phone")
-            .eq("id", data.user_id)
-            .single();
-          
-          if (profileData) {
-            studentName = profileData.full_name;
-            studentPhone = profileData.phone;
+          try {
+            const { data: profileData } = await supabase
+              .from("profiles")
+              .select("full_name, phone")
+              .eq("id", data.user_id)
+              .maybeSingle();
+
+            if (profileData) {
+              studentName = profileData.full_name;
+              studentPhone = profileData.phone;
+            }
+          } catch {
+            // profile fetch is best-effort
           }
         }
 
@@ -107,6 +111,9 @@ export default function ActiveRidePage() {
   useGeofence({
     ride,
     geoState,
+    onStatusChange: (newStatus) => {
+      setRide((prev) => (prev ? { ...prev, status: newStatus } : null));
+    },
   });
 
   const handleEmergency = () => {

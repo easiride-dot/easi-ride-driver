@@ -104,7 +104,7 @@ export function BottomSheet({ ride, className, onEmergency, onStatusChange, etaS
   const isCompleted = ride.status === "completed";
 
   // Format ETA from seconds to minutes
-  const formatEta = (seconds: number | null) => {
+  const formatEta = (seconds: number | null | undefined) => {
     if (!seconds) return null;
     const minutes = Math.ceil(seconds / 60);
     if (minutes < 1) return "< 1 min";
@@ -115,7 +115,7 @@ export function BottomSheet({ ride, className, onEmergency, onStatusChange, etaS
   return (
     <div
       className={cn(
-        "bg-[#1A1A1A] rounded-t-3xl border-t border-hairline px-5 pt-4 pb-8 flex flex-col gap-4",
+        "bg-[#1A1A1A] rounded-t-3xl border-t border-hairline px-5 pt-4 pb-8 flex flex-col gap-4 animate-fade-up",
         className
       )}
     >
@@ -265,7 +265,7 @@ export function BottomSheet({ ride, className, onEmergency, onStatusChange, etaS
       {/* Manual Status Transition Buttons */}
       {!isCompleted && onStatusChange && (
         <div className="space-y-2">
-          {ride.status === "accepted" && (
+          {ride.status === "driver_assigned" && (
             <button
               onClick={() => onStatusChange("driver_arrived")}
               className="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-amber-500 hover:bg-amber-600 transition-colors"
@@ -299,7 +299,7 @@ export function BottomSheet({ ride, className, onEmergency, onStatusChange, etaS
             </button>
           )}
           {/* Cancel Ride Button */}
-          {ride.status === "accepted" && onCancelRide && (
+          {(ride.status === "driver_assigned" || ride.status === "driver_arrived") && onCancelRide && (
             <button
               onClick={onCancelRide}
               className="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 transition-colors"
