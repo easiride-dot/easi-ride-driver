@@ -51,7 +51,7 @@ export default function Auth() {
         .from("drivers")
         .select("id, full_name, status")
         .eq("id", data.user.id)
-        .single();
+        .maybeSingle();
 
       if (driverError || !driverRecord) {
         // Not a driver — sign them out

@@ -33,7 +33,13 @@ CREATE POLICY "Ride owner reads driver location"
     )
   );
 
--- 4. Allow students to read their assigned driver's info from the drivers table
+-- 4a. Allow drivers to read their own record (sign-in check, profile read)
+DROP POLICY IF EXISTS "Driver reads own record" ON drivers;
+CREATE POLICY "Driver reads own record"
+  ON drivers FOR SELECT
+  USING (id = auth.uid());
+
+-- 4b. Allow students to read their assigned driver's info
 DROP POLICY IF EXISTS "Ride owner reads assigned driver" ON drivers;
 CREATE POLICY "Ride owner reads assigned driver"
   ON drivers FOR SELECT
