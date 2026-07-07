@@ -3,24 +3,69 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Easi Ride Design System — Black / Grey / Soft White */
+/* Easi Ride Design System — Light / Dark */
 
 @layer base {
   :root {
-    /* Core surface palette */
-    --background: 0 0% 4%;            /* #0B0B0B */
+    /* ── Light theme (default) ── */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 6%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 6%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 6%;
+
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 92%;
+    --secondary-foreground: 0 0% 10%;
+
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 0 0% 90%;
+    --accent-foreground: 0 0% 10%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 86%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 60%;
+
+    --radius: 1rem;
+
+    --surface-elevated: 0 0% 100%;
+    --surface-strong: 0 0% 96%;
+    --hairline: 0 0% 80%;
+
+    --gradient-hero: radial-gradient(ellipse 80% 60% at 50% 0%, hsl(0 0% 90% / 0.8), hsl(0 0% 98%) 70%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(0 0% 95%));
+    --gradient-glow: radial-gradient(circle at 30% 20%, hsl(0 0% 0% / 0.02), transparent 60%);
+
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.06), 0 1px 3px hsl(0 0% 0% / 0.04);
+    --shadow-elevated: 0 4px 12px hsl(0 0% 0% / 0.08), 0 2px 4px hsl(0 0% 0% / 0.04);
+    --shadow-cta: 0 4px 14px hsl(0 0% 0% / 0.15);
+  }
+
+  .dark {
+    /* ── Dark theme ── */
+    --background: 0 0% 4%;
     --foreground: 0 0% 98%;
 
-    --card: 0 0% 10%;                 /* #1A1A1A */
+    --card: 0 0% 10%;
     --card-foreground: 0 0% 98%;
 
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 0 0% 98%;              /* soft white CTA */
+    --primary: 0 0% 98%;
     --primary-foreground: 0 0% 6%;
 
-    --secondary: 0 0% 16%;            /* #2A2A2A */
+    --secondary: 0 0% 16%;
     --secondary-foreground: 0 0% 92%;
 
     --muted: 0 0% 12%;
@@ -38,7 +83,6 @@
 
     --radius: 1rem;
 
-    /* Custom tokens */
     --surface-elevated: 0 0% 12%;
     --surface-strong: 0 0% 16%;
     --hairline: 0 0% 22%;
@@ -67,11 +111,12 @@
     font-feature-settings: "ss01", "cv11";
     background-image: var(--gradient-glow);
     background-attachment: fixed;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   ::selection {
-    background: hsl(0 0% 98%);
-    color: hsl(0 0% 6%);
+    background: hsl(0 0% 60% / 0.3);
+    color: hsl(var(--foreground));
   }
 }
 
@@ -116,9 +161,9 @@
   75%, 100% { transform: scale(2); opacity: 0; }
 }
 
-/* Custom Leaflet Dark Mode tweaks & UI overrides */
+/* Custom Leaflet theme tweaks & UI overrides */
 .leaflet-container {
-  background-color: #0b0b0b !important;
+  background-color: hsl(var(--background)) !important;
   font-family: inherit;
 }
 
@@ -163,7 +208,7 @@
 }
 
 .leaflet-control-attribution {
-  background: rgba(11, 11, 11, 0.7) !important;
+  background: hsl(var(--background) / 0.7) !important;
   color: hsl(var(--muted-foreground)) !important;
   font-size: 9px !important;
 }
