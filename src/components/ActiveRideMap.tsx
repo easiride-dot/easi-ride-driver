@@ -148,7 +148,7 @@ export function ActiveRideMap({
           pitch: 45,
           bearing: 0,
         }}
-        scrollZoom={false}
+        scrollZoom
         dragPan
         style={{ width: "100%", height: "100%" }}
       >

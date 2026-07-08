@@ -197,7 +197,7 @@ export default function ActiveRidePage() {
       </div>
 
       {/* Draggable bottom drawer */}
-      <Drawer.Root open={drawerOpen} onOpenChange={setDrawerOpen} dismissible={false} snapPoints={[0.35, 0.85]} activeSnapPoint={snap} setActiveSnapPoint={setSnap}>
+      <Drawer.Root open={drawerOpen} onOpenChange={setDrawerOpen} dismissible={false} snapPoints={[0.35, 0.85]} activeSnapPoint={snap} setActiveSnapPoint={setSnap} modal={false}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/40" />
           <Drawer.Content
