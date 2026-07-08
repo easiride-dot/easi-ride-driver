@@ -53,6 +53,7 @@ export default function ActiveRidePage() {
   const [error, setError] = useState<string | null>(null);
   const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(true);
+  const [snap, setSnap] = useState<number | string | null>(0.85);
   const drawerRef = useRef<HTMLDivElement>(null);
 
   const geoState = useGeolocation(id);
@@ -196,7 +197,7 @@ export default function ActiveRidePage() {
       </div>
 
       {/* Draggable bottom drawer */}
-      <Drawer.Root open={drawerOpen} onOpenChange={setDrawerOpen} dismissible={false}>
+      <Drawer.Root open={drawerOpen} onOpenChange={setDrawerOpen} dismissible={false} snapPoints={[0.35, 0.85]} activeSnapPoint={snap} setActiveSnapPoint={setSnap}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/40" />
           <Drawer.Content
