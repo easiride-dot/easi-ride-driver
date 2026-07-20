@@ -214,13 +214,13 @@ export default function ActiveRidePage() {
           <Drawer.Overlay className="fixed inset-0 bg-black/40" />
           <Drawer.Content
             ref={drawerRef}
-            className="fixed bottom-0 left-0 right-0 z-30 flex flex-col rounded-t-3xl bg-[#1A1A1A] border-t border-hairline outline-none max-h-[85dvh]"
+            className="fixed bottom-0 left-0 right-0 z-30 flex flex-col rounded-t-3xl bg-[#1A1A1A] border-t border-hairline outline-none max-h-[85dvh] overflow-hidden"
             style={{ boxShadow: "0 -8px 30px rgba(0,0,0,0.3)" }}
           >
             {/* Drag handle */}
             <div className="mx-auto mt-3 mb-2 h-1.5 w-12 rounded-full bg-border flex-shrink-0" />
 
-            <div className="flex-1 overflow-y-auto px-5 pb-8 space-y-4">
+            <div className="flex-1 overflow-y-auto px-5 pb-8 space-y-4 min-h-0">
               {/* Status banner */}
               <div className={cn("flex items-center gap-3 rounded-2xl px-4 py-3", config.bgColor)}>
                 <div className={cn("flex-shrink-0", config.color)}>
