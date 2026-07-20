@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapView, CameraController, LocationMarker, RouteLayer, MapControls } from "@/map";
-import { Source, Layer } from "react-map-gl/maplibre";
 import { MAP_CONFIG } from "@/map/map-style";
 
 const FREETOWN_CENTER: [number, number] = MAP_CONFIG.freetownCenter;
@@ -126,18 +125,6 @@ export function ActiveRideMap({
     fetchRoute();
   }, [driverPos, pickupPos, destPos, showPickup, showDestination]);
 
-  const tripGeoJSON = useMemo(() => {
-    if (tripRoutePoints.length < 2) return null;
-    return {
-      type: "Feature" as const,
-      properties: {},
-      geometry: {
-        type: "LineString" as const,
-        coordinates: tripRoutePoints.map(([lat, lon]) => [lon, lat] as [number, number]),
-      },
-    };
-  }, [tripRoutePoints]);
-
   return (
     <div className="relative h-full w-full">
       <MapView
@@ -179,26 +166,15 @@ export function ActiveRideMap({
           />
         )}
 
-        {/* Subtle background trip route (pickup → destination) */}
-        {tripGeoJSON && (
-          <Source id="trip-route" type="geojson" data={tripGeoJSON}>
-            <Layer
-              id="trip-route-line"
-              type="line"
-              source="trip-route"
-              layout={{ "line-cap": "round", "line-join": "round" }}
-              paint={{
-                "line-color": "#ffffff",
-                "line-width": 3,
-                "line-opacity": 0.3,
-                "line-blur": 1,
-              }}
-            />
-          </Source>
+        {/* Active navigation route (driver → pickup) */}
+        {routePoints.length > 1 && (
+          <RouteLayer points={routePoints} id="nav-route" color="#10b981" width={4} />
         )}
 
-        {/* Active navigation route (driver → pickup/destination) */}
-        {routePoints.length > 1 && <RouteLayer points={routePoints} />}
+        {/* Trip route (pickup → destination) */}
+        {tripRoutePoints.length > 1 && (
+          <RouteLayer points={tripRoutePoints} id="trip-route" color="#3b82f6" width={5} />
+        )}
 
         <MapControls />
       </MapView>

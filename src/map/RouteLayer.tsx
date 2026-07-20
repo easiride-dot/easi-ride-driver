@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Source, Layer } from "react-map-gl/maplibre";
-import { ROUTE_SOURCE_ID, ROUTE_LAYER_ID, routeLayerStyle } from "./map-style";
 
 interface RouteLayerProps {
   points: [number, number][];
+  id?: string;
+  color?: string;
+  width?: number;
 }
 
-export function RouteLayer({ points }: RouteLayerProps) {
+export function RouteLayer({ points, id = "route", color = "#3b82f6", width = 6 }: RouteLayerProps) {
   const [opacity, setOpacity] = useState(0);
 
   const geojson = useMemo(() => {
@@ -32,12 +34,20 @@ export function RouteLayer({ points }: RouteLayerProps) {
   if (!geojson) return null;
 
   return (
-    <Source id={ROUTE_SOURCE_ID} type="geojson" data={geojson}>
+    <Source id={`${id}-source`} type="geojson" data={geojson}>
       <Layer
-        {...routeLayerStyle}
+        id={`${id}-line`}
+        type="line"
+        source={`${id}-source`}
+        layout={{
+          "line-cap": "round",
+          "line-join": "round",
+        }}
         paint={{
-          ...routeLayerStyle.paint,
+          "line-color": color,
+          "line-width": width,
           "line-opacity": 0.85 * opacity,
+          "line-blur": 0,
         }}
       />
     </Source>
