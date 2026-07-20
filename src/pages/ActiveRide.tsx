@@ -97,6 +97,11 @@ export default function ActiveRidePage() {
           } catch {}
         }
 
+        if (data.status === "completed" || data.status === "cancelled") {
+          navigate("/dashboard", { replace: true });
+          return;
+        }
+
         setRide({ ...data, student_name: studentName, student_phone: studentPhone } as ActiveRide);
       } catch {
         setError("Failed to load ride details.");
@@ -113,7 +118,14 @@ export default function ActiveRidePage() {
     const channel = supabase
       .channel(`active-ride-${id}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "rides", filter: `id=eq.${id}` },
-        (payload) => setRide((prev) => (prev ? { ...prev, ...(payload.new as Partial<ActiveRide>) } : null))
+        (payload) => {
+          const updated = payload.new as Record<string, any>;
+          if (updated.status === "completed" || updated.status === "cancelled") {
+            navigate("/dashboard", { replace: true });
+            return;
+          }
+          setRide((prev) => (prev ? { ...prev, ...updated } : null));
+        }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };

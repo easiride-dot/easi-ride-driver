@@ -51,6 +51,24 @@ export default function Dashboard() {
       });
   }, [driver, startWatching]);
 
+  // Redirect to active ride if one is in progress
+  useEffect(() => {
+    if (!driver) return;
+    supabase
+      .from("rides")
+      .select("id, status, updated_at")
+      .eq("driver_id", driver.id)
+      .in("status", ["driver_assigned", "driver_arrived", "in_progress"])
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          navigate(`/ride/${data.id}`, { replace: true });
+        }
+      });
+  }, [driver, navigate]);
+
   // Fetch earnings data
   useEffect(() => {
     if (!driver) return;
