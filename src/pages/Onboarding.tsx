@@ -152,8 +152,9 @@ export default function Onboarding() {
 
       toast.success("You are now online and ready to receive rides!");
       window.location.href = "/dashboard";
-    } catch (err) {
-      toast.error("Failed to complete setup. Please try again.");
+    } catch (err: any) {
+      console.error("handleGoOnline error:", err);
+      toast.error(err?.message || "Failed to complete setup. Please try again.");
       setCompleting(false);
     }
   };
