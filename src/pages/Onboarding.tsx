@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { 
   Smartphone, Bell, MapPin, Power, 
   CheckCircle2, ArrowRight, X, Phone
@@ -11,8 +10,7 @@ import { subscribeToPushNotifications, getExistingPushSubscription } from "@/lib
 import { cn } from "@/lib/utils";
 
 export default function Onboarding() {
-  const { driver, user, refreshDriver } = useAuth();
-  const navigate = useNavigate();
+  const { driver, user } = useAuth();
   
   // State for each step
   const [pwaInstalled, setPwaInstalled] = useState(false);
@@ -124,8 +122,7 @@ export default function Onboarding() {
       if (updateError) throw updateError;
       
       toast.success("You are now online and ready to receive rides!");
-      await refreshDriver();
-      navigate("/dashboard", { replace: true });
+      window.location.href = "/dashboard";
     } catch (err) {
       toast.error("Failed to complete setup. Please try again.");
       setCompleting(false);

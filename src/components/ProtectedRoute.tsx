@@ -1,12 +1,39 @@
+import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function ProtectedRoute() {
-  const { user, driver, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const location = useLocation();
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+  const [checking, setChecking] = useState(true);
 
-  if (loading) {
+  useEffect(() => {
+    if (authLoading || !user) {
+      setChecking(false);
+      return;
+    }
+
+    const checkOnboarding = async () => {
+      try {
+        const { data } = await supabase
+          .from("drivers")
+          .select("onboarding_completed")
+          .eq("id", user.id)
+          .maybeSingle();
+        setOnboardingCompleted(data?.onboarding_completed ?? false);
+      } catch {
+        setOnboardingCompleted(false);
+      } finally {
+        setChecking(false);
+      }
+    };
+    checkOnboarding();
+  }, [user, authLoading]);
+
+  if (authLoading || checking) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-8">
         <div className="flex items-center gap-3">
@@ -28,12 +55,12 @@ export function ProtectedRoute() {
   }
 
   // Handle onboarding redirect
-  if (driver && driver.onboarding_completed === false && location.pathname !== "/onboarding") {
+  if (onboardingCompleted === false && location.pathname !== "/onboarding") {
     return <Navigate to="/onboarding" replace />;
   }
 
   // Prevent accessing onboarding once completed
-  if (driver && driver.onboarding_completed === true && location.pathname === "/onboarding") {
+  if (onboardingCompleted === true && location.pathname === "/onboarding") {
     return <Navigate to="/dashboard" replace />;
   }
 
