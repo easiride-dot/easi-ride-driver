@@ -528,7 +528,7 @@ export default function Dashboard() {
                 Waiting for ride requests
               </p>
               <p className="text-xs text-muted-foreground max-w-[200px] leading-relaxed">
-                Stay connected. New rides will appear as a full-screen notification.
+                Stay connected. New rides will appear automatically as full-screen notifications.
               </p>
               <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 {formatTime(currentTime)}
