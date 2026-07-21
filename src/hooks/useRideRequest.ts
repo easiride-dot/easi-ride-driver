@@ -172,16 +172,15 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      // Use API for atomic acceptance
       try {
         const apiBase = import.meta.env.VITE_API_URL || "";
-        const response = await fetch(`${apiBase}/api/accept-ride`, {
+        const response = await fetch(`${apiBase}/api/dispatch`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ rideId }),
+          body: JSON.stringify({ type: "accept", rideId }),
         });
 
         const result = await response.json();
@@ -236,13 +235,13 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
 
       try {
         const apiBase = import.meta.env.VITE_API_URL || "";
-        const response = await fetch(`${apiBase}/api/decline-ride-invitation`, {
+        const response = await fetch(`${apiBase}/api/dispatch`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ rideId }),
+          body: JSON.stringify({ type: "decline", rideId }),
         });
 
         const result = await response.json();
