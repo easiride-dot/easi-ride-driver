@@ -1,29 +1,28 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
 import { 
-  Smartphone, Bell, MapPin, Power, 
+  Smartphone, Monitor, Bell, MapPin, Power, 
   CheckCircle2, ArrowRight
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { subscribeToPushNotifications } from "@/lib/pushNotifications";
+import { subscribeToPushNotifications, getExistingPushSubscription } from "@/lib/pushNotifications";
 import { cn } from "@/lib/utils";
 
 export default function Onboarding() {
-  const { driver, user, refreshDriver } = useAuth();
-  const navigate = useNavigate();
+  const { driver, user } = useAuth();
   
-  // State for each step
   const [pwaInstalled, setPwaInstalled] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(false);
   
   const [checkingPwa, setCheckingPwa] = useState(false);
   const [completing, setCompleting] = useState(false);
-  
+  const deferredPrompt = useRef<any>(null);
+
   const isAndroid = /android/i.test(navigator.userAgent);
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isDesktop = !isAndroid && !isIOS;
 
   // Check initial statuses
   useEffect(() => {
@@ -39,13 +38,36 @@ export default function Onboarding() {
       setPwaInstalled(evt.matches);
     });
 
+    // Listen for the browser install prompt (desktop)
+    const onBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      deferredPrompt.current = e;
+    };
+    window.addEventListener('beforeinstallprompt', onBeforeInstall as EventListener);
+
     // 2. Notification check
     if (("Notification" in window) && Notification.permission === "granted") {
       setNotificationsEnabled(true);
     }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall as EventListener);
+    };
   }, []);
 
-  const handleCheckPwa = () => {
+  const handleCheckPwa = async () => {
+    // On desktop, try showing the native install prompt first
+    if (isDesktop && deferredPrompt.current) {
+      deferredPrompt.current.prompt();
+      const result = await deferredPrompt.current.userChoice;
+      deferredPrompt.current = null;
+      if (result.outcome === "accepted") {
+        setPwaInstalled(true);
+        toast.success("App installed successfully!");
+      }
+      return;
+    }
+
     setCheckingPwa(true);
     setTimeout(() => {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && (navigator as any).standalone);
@@ -128,13 +150,8 @@ export default function Onboarding() {
         throw new Error("Onboarding completion not persisted");
       }
 
-      // CRITICAL: Refresh the in-memory driver state so ProtectedRoute
-      // sees onboarding_completed = true before we navigate away.
-      // Without this, ProtectedRoute bounces us back to /onboarding.
-      await refreshDriver();
-
       toast.success("You are now online and ready to receive rides!");
-      navigate("/dashboard", { replace: true });
+      window.location.href = "/dashboard";
     } catch (err) {
       toast.error("Failed to complete setup. Please try again.");
       setCompleting(false);
@@ -182,24 +199,32 @@ export default function Onboarding() {
             : "bg-[#141414] border-white/5"
         )}>
           <div className="flex items-start gap-4">
-            <div className={cn(
+              <div className={cn(
               "h-12 w-12 rounded-2xl flex items-center justify-center shrink-0",
               pwaInstalled ? "bg-emerald-500/20 text-emerald-400" : "bg-white/10 text-white"
             )}>
-              {pwaInstalled ? <CheckCircle2 className="h-6 w-6" /> : <Smartphone className="h-6 w-6" />}
+              {pwaInstalled ? <CheckCircle2 className="h-6 w-6" /> : isDesktop ? <Monitor className="h-6 w-6" /> : <Smartphone className="h-6 w-6" />}
             </div>
             <div className="flex-1">
               <h3 className="text-base font-bold text-white mb-1">Install Driver App</h3>
               <p className="text-xs text-white/60 mb-4 leading-relaxed">
                 {pwaInstalled 
                   ? "App successfully installed on your device."
-                  : "Install Easi Ride on your home screen for the fastest experience."}
+                  : isDesktop
+                    ? "Install Easi Ride on your desktop for the fastest experience."
+                    : "Install Easi Ride on your home screen for the fastest experience."}
               </p>
               
               {!pwaInstalled && (
                 <div className="space-y-4">
                   <div className="p-3 bg-black/40 rounded-2xl border border-white/5 text-xs text-white/80 space-y-2">
-                    {isIOS ? (
+                    {isDesktop ? (
+                      <ol className="list-decimal pl-4 space-y-1">
+                        <li>Click the <b>install icon</b> <ArrowRight className="inline h-3 w-3" /> in the browser address bar</li>
+                        <li>Click <b>Install</b></li>
+                        <li>Launch Easi Ride from your desktop</li>
+                      </ol>
+                    ) : isIOS ? (
                       <ol className="list-decimal pl-4 space-y-1">
                         <li>Tap <b>Share</b> <ArrowRight className="inline h-3 w-3" /></li>
                         <li>Select <b>"Add to Home Screen"</b></li>
@@ -220,7 +245,7 @@ export default function Onboarding() {
                     disabled={checkingPwa}
                     className="w-full py-3.5 bg-white text-black text-sm font-bold rounded-2xl hover:bg-white/90 transition-colors disabled:opacity-50"
                   >
-                    {checkingPwa ? "Checking..." : "I've Installed It"}
+                    {checkingPwa ? "Checking..." : deferredPrompt.current ? "Install Now" : "I've Installed It"}
                   </button>
                 </div>
               )}
