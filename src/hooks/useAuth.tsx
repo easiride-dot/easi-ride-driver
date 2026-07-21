@@ -26,6 +26,7 @@ interface AuthContextValue {
   driver: Driver | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshDriver: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -104,8 +105,13 @@ const subscribeIfPossible = async (userId: string) => {
     setDriver(null);
   };
 
+  const refreshDriver = async () => {
+    if (!user) return;
+    await fetchDriver(user.id);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, driver, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, driver, loading, signOut, refreshDriver }}>
       {children}
     </AuthContext.Provider>
   );

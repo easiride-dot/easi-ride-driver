@@ -11,7 +11,7 @@ import { subscribeToPushNotifications, getExistingPushSubscription } from "@/lib
 import { cn } from "@/lib/utils";
 
 export default function Onboarding() {
-  const { driver, user } = useAuth();
+  const { driver, user, refreshDriver } = useAuth();
   const navigate = useNavigate();
   
   // State for each step
@@ -123,11 +123,9 @@ export default function Onboarding() {
 
       if (updateError) throw updateError;
       
-      // Update local driver object is handled by the hook via auth refresh / db check,
-      // but we can manually navigate to dashboard now.
       toast.success("You are now online and ready to receive rides!");
+      await refreshDriver();
       navigate("/dashboard", { replace: true });
-      window.location.reload(); // Quick way to ensure the whole app respects the updated state
     } catch (err) {
       toast.error("Failed to complete setup. Please try again.");
       setCompleting(false);
