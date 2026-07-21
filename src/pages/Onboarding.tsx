@@ -1,16 +1,18 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Smartphone, Bell, MapPin, Power, 
-  CheckCircle2, ArrowRight, X, Phone
+  CheckCircle2, ArrowRight
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { subscribeToPushNotifications, getExistingPushSubscription } from "@/lib/pushNotifications";
+import { subscribeToPushNotifications } from "@/lib/pushNotifications";
 import { cn } from "@/lib/utils";
 
 export default function Onboarding() {
-  const { driver, user } = useAuth();
+  const { driver, user, refreshDriver } = useAuth();
+  const navigate = useNavigate();
   
   // State for each step
   const [pwaInstalled, setPwaInstalled] = useState(false);
@@ -100,7 +102,7 @@ export default function Onboarding() {
     if (!driver) return;
     setCompleting(true);
     try {
-      // Create active driver session
+      // End any existing active session
       await supabase
         .from("driver_sessions")
         .update({ is_active: false, ended_at: new Date().toISOString() })
@@ -113,16 +115,26 @@ export default function Onboarding() {
 
       if (sessionError) throw sessionError;
 
-      // Mark onboarding as completed
-      const { error: updateError } = await supabase
+      // Mark onboarding as completed in the database
+      const { data: updatedDriver, error: updateError } = await supabase
         .from("drivers")
         .update({ onboarding_completed: true })
-        .eq("id", driver.id);
+        .eq("id", driver.id)
+        .select("onboarding_completed")
+        .single();
 
       if (updateError) throw updateError;
-      
+      if (!updatedDriver || updatedDriver.onboarding_completed !== true) {
+        throw new Error("Onboarding completion not persisted");
+      }
+
+      // CRITICAL: Refresh the in-memory driver state so ProtectedRoute
+      // sees onboarding_completed = true before we navigate away.
+      // Without this, ProtectedRoute bounces us back to /onboarding.
+      await refreshDriver();
+
       toast.success("You are now online and ready to receive rides!");
-      window.location.href = "/dashboard";
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       toast.error("Failed to complete setup. Please try again.");
       setCompleting(false);
