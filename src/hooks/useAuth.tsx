@@ -17,6 +17,7 @@ export interface Driver {
   plate_number: string | null;
   status: string;
   created_at: string;
+  onboarding_completed: boolean;
 }
 
 interface AuthContextValue {

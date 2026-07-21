@@ -10,6 +10,7 @@ import ActiveRide from "./pages/ActiveRide";
 import History from "./pages/History";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import Onboarding from "./pages/Onboarding";
 
 const App = () => (
   <>
@@ -21,6 +22,8 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           
           <Route element={<ProtectedRoute />}>
+            <Route path="/onboarding" element={<Onboarding />} />
+            
             <Route element={<AppShell />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/history" element={<History />} />

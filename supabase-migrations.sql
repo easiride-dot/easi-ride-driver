@@ -136,6 +136,10 @@ BEGIN
   END IF;
 END $$;
 
+-- 8. Add onboarding_completed flag to drivers
+ALTER TABLE drivers
+  ADD COLUMN IF NOT EXISTS onboarding_completed boolean DEFAULT false;
+
 -- ============================================================
 -- END OF MIGRATIONS
 -- ============================================================

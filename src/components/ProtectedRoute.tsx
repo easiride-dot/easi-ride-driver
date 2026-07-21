@@ -1,9 +1,10 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function ProtectedRoute() {
-  const { user, loading } = useAuth();
+  const { user, driver, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -24,6 +25,16 @@ export function ProtectedRoute() {
 
   if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // Handle onboarding redirect
+  if (driver && driver.onboarding_completed === false && location.pathname !== "/onboarding") {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  // Prevent accessing onboarding once completed
+  if (driver && driver.onboarding_completed === true && location.pathname === "/onboarding") {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <Outlet />;

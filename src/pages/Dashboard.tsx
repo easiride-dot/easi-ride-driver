@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Power, Wifi, WifiOff, Car, Bell, BellRing, X, TrendingUp } from "lucide-react";
+import { Power, Wifi, WifiOff, Car, Bell, BellRing, X, TrendingUp, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { cn, formatTime, formatNLe } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -21,6 +21,8 @@ export default function Dashboard() {
   const [pushState, setPushState] = useState<"loading" | "prompt" | "enabled" | "unsupported">("loading");
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [todayRides, setTodayRides] = useState(0);
+  const [isPwaInstalled, setIsPwaInstalled] = useState(true);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   const { startWatching, stopWatching } = useGeolocation(null);
   const { incomingRide, acceptRide, declineRide } = useRideRequest({
@@ -68,6 +70,23 @@ export default function Dashboard() {
         }
       });
   }, [driver, navigate]);
+
+  // Check PWA installation
+  useEffect(() => {
+    const checkPwa = () => {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && (navigator as any).standalone);
+      setIsPwaInstalled(!!isStandalone);
+    };
+    checkPwa();
+
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
 
   // Fetch earnings data
   useEffect(() => {
@@ -201,6 +220,19 @@ export default function Dashboard() {
     }
   };
 
+  const handleInstallPwa = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setIsPwaInstalled(true);
+      }
+      setDeferredPrompt(null);
+    } else {
+      toast.info("Please use your browser's 'Add to Home Screen' option to install the app.");
+    }
+  };
+
   const firstName = driver?.full_name?.split(" ")[0] ?? "Driver";
   const hour = new Date().getHours();
   const greeting =
@@ -278,25 +310,48 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Push notification enable banner */}
-        {pushState === "prompt" && (
-          <div className="glass-card rounded-3xl p-4 border border-primary/20 bg-primary/5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
-                <BellRing className="h-5 w-5 text-primary" />
+        {/* PWA Install Reminder */}
+        {!isPwaInstalled && (
+          <div className="glass-card rounded-3xl p-5 border border-primary/20 bg-primary/5 shadow-soft">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+                <Smartphone className="h-6 w-6 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">Enable notifications</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Get instantly notified of new ride requests
+                <h3 className="text-base font-bold text-foreground">Install Easi Ride</h3>
+                <p className="text-xs text-muted-foreground mt-1 mb-3">
+                  Install Easi Ride to receive faster ride alerts and a better experience.
                 </p>
+                <button
+                  onClick={handleInstallPwa}
+                  className="w-full rounded-2xl bg-foreground py-3 text-sm font-bold text-background hover:bg-foreground/90 transition-colors"
+                >
+                  Install
+                </button>
               </div>
-              <button
-                onClick={enableNotifications}
-                className="shrink-0 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                Enable
-              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Push notification enable banner */}
+        {pushState === "prompt" && (
+          <div className="glass-card rounded-3xl p-5 border border-primary/20 bg-primary/5 shadow-soft">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+                <Bell className="h-6 w-6 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-foreground">Enable Notifications</h3>
+                <p className="text-xs text-muted-foreground mt-1 mb-3">
+                  You may miss ride requests if notifications are disabled.
+                </p>
+                <button
+                  onClick={enableNotifications}
+                  className="w-full rounded-2xl bg-foreground py-3 text-sm font-bold text-background hover:bg-foreground/90 transition-colors"
+                >
+                  Enable
+                </button>
+              </div>
             </div>
           </div>
         )}
