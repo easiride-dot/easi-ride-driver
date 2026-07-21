@@ -3,6 +3,33 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "./useAuth";
 
+const playNotificationSound = () => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.value = 800;
+    gain.gain.value = 0.3;
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+    setTimeout(() => {
+      const ctx2 = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc2 = ctx2.createOscillator();
+      const gain2 = ctx2.createGain();
+      osc2.connect(gain2);
+      gain2.connect(ctx2.destination);
+      osc2.type = "sine";
+      osc2.frequency.value = 1000;
+      gain2.gain.value = 0.3;
+      osc2.start();
+      osc2.stop(ctx2.currentTime + 0.2);
+    }, 200);
+  } catch {}
+};
+
 export interface IncomingRide {
   id: string;
   pickup: string;
@@ -30,6 +57,16 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
   const checkPendingRef = useRef<(() => void) | null>(null);
 
   const clearIncoming = useCallback(() => setIncomingRide(null), []);
+
+  // Play sound + vibrate on new incoming ride
+  useEffect(() => {
+    if (incomingRide) {
+      playNotificationSound();
+      if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200]);
+      }
+    }
+  }, [incomingRide]);
 
   useEffect(() => {
     if (!enabled || !user) {
