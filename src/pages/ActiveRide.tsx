@@ -101,7 +101,7 @@ export default function ActiveRidePage() {
         }
 
         if (data.status === "completed" || data.status === "cancelled") {
-          navigate("/dashboard", { replace: true });
+          navigate("/dashboard", { replace: true, state: { fromActiveRide: true } });
           return;
         }
 
@@ -124,7 +124,7 @@ export default function ActiveRidePage() {
         (payload) => {
           const updated = payload.new as Record<string, any>;
           if (updated.status === "completed" || updated.status === "cancelled") {
-            navigate("/dashboard", { replace: true });
+            navigate("/dashboard", { replace: true, state: { fromActiveRide: true } });
             return;
           }
           setRide((prev) => (prev ? { ...prev, ...updated } : null));
@@ -161,11 +161,7 @@ export default function ActiveRidePage() {
       console.error("Failed to cancel ride:", error);
       toast.error("Failed to cancel ride.");
     } else {
-      navigate("/dashboard");
-    }
-  };
-
-  if (loading) return (
+      navigate("/dashboard", { replace: true, state: { fromActiveRide: true } });
     <div className="min-h-screen bg-background flex items-center justify-center gap-4">
       <Loader2 className="h-8 w-8 text-primary animate-spin" />
       <p className="text-sm text-muted-foreground uppercase tracking-widest">Loading ride...</p>
@@ -179,7 +175,7 @@ export default function ActiveRidePage() {
       </div>
       <h2 className="text-xl font-display font-semibold mb-2">Error</h2>
       <p className="text-muted-foreground text-sm mb-8">{error || "Ride not found."}</p>
-      <button onClick={() => navigate("/dashboard")} className="flex items-center gap-2 text-sm font-semibold text-primary hover:underline uppercase tracking-wider">
+      <button onClick={() => navigate("/dashboard", { replace: true, state: { fromActiveRide: true } })} className="flex items-center gap-2 text-sm font-semibold text-primary hover:underline uppercase tracking-wider">
         <ArrowLeft className="h-4 w-4" /> Return to Dashboard
       </button>
     </div>
@@ -217,7 +213,7 @@ export default function ActiveRidePage() {
       {/* Top header overlay */}
       <div className="absolute top-0 left-0 right-0 z-20 pt-12 pb-4 px-4 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/dashboard", { replace: true, state: { fromActiveRide: true } })}
           className="pointer-events-auto flex items-center justify-center h-10 w-10 rounded-full bg-background/80 backdrop-blur-md border border-hairline/50 shadow-elevated"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />

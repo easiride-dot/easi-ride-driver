@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Power, Wifi, WifiOff, Car, Bell, X, TrendingUp, Smartphone, Monitor, MapPin, CheckCircle2, Loader2, Share2, Plus, Clock, Navigation, AlertTriangle } from "lucide-react";
 import * as Drawer from "vaul";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ import { subscribeToPushNotifications, getExistingPushSubscription } from "@/lib
 export default function Dashboard() {
   const { user, driver, refreshDriver } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOnline, setIsOnline] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
@@ -64,6 +65,7 @@ export default function Dashboard() {
   // Redirect to active ride once on load (not on every dashboard visit)
   useEffect(() => {
     if (!driver || activeRideCheckedRef.current) return;
+    if (location.state?.fromActiveRide) return;
     activeRideCheckedRef.current = true;
     supabase
       .from("rides")
