@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { ArrowLeft, Car } from "lucide-react";
 
@@ -22,12 +22,12 @@ const NotFound = () => {
         <p className="text-lg text-muted-foreground mb-8">
           Oops! This route doesn't exist.
         </p>
-        <a 
-          href="/" 
+        <Link 
+          to="/dashboard" 
           className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-primary hover:underline"
         >
           <ArrowLeft className="h-4 w-4" /> Return to Dashboard
-        </a>
+        </Link>
       </div>
     </div>
   );

@@ -38,15 +38,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchDriver = async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("drivers")
       .select("*")
       .eq("id", userId)
       .maybeSingle();
       
+    if (error) {
+      console.error("Failed to fetch driver:", error);
+      return;
+    }
     if (!data) {
-      // If the authenticated user is not in the drivers table (e.g. they are a student),
-      // we sign them out immediately to prevent them from accessing the driver app.
       await supabase.auth.signOut();
       setDriver(null);
     } else {
@@ -73,6 +75,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (existing?.user) {
         await fetchDriver(existing.user.id);
       }
+      setLoading(false);
+    }).catch((err) => {
+      console.error("getSession failed:", err);
       setLoading(false);
     });
 
@@ -101,6 +106,13 @@ const subscribeIfPossible = async (userId: string) => {
 };
 
   const signOut = async () => {
+    if (user) {
+      await supabase
+        .from("driver_sessions")
+        .update({ is_active: false, ended_at: new Date().toISOString() })
+        .eq("driver_id", user.id)
+        .eq("is_active", true);
+    }
     await supabase.auth.signOut();
     setDriver(null);
   };

@@ -69,9 +69,10 @@ export function useGeofence({ ride, geoState, onStatusChange }: UseGeofenceOptio
           onStatusChange?.(newStatus);
         } else {
           console.error("Geofence status update failed:", error);
+          processingRef.current = false;
+          return;
         }
       } finally {
-        // Small delay to prevent rapid re-triggers
         setTimeout(() => {
           processingRef.current = false;
         }, 3000);

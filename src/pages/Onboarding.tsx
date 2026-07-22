@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Smartphone, Monitor, Bell, MapPin, Power, 
   CheckCircle2, ArrowRight
@@ -11,6 +12,7 @@ import { cn } from "@/lib/utils";
 
 export default function Onboarding() {
   const { driver, user } = useAuth();
+  const navigate = useNavigate();
   
   const [pwaInstalled, setPwaInstalled] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -18,7 +20,7 @@ export default function Onboarding() {
   
   const [checkingPwa, setCheckingPwa] = useState(false);
   const [completing, setCompleting] = useState(false);
-  const deferredPrompt = useRef<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   const isAndroid = /android/i.test(navigator.userAgent);
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -34,14 +36,16 @@ export default function Onboarding() {
     checkPwa();
 
     // Listen for display mode changes (if installed while app is open)
-    window.matchMedia('(display-mode: standalone)').addEventListener('change', (evt) => {
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const handleMediaChange = (evt: MediaQueryListEvent) => {
       setPwaInstalled(evt.matches);
-    });
+    };
+    mediaQuery.addEventListener('change', handleMediaChange);
 
     // Listen for the browser install prompt (desktop)
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
-      deferredPrompt.current = e;
+      setDeferredPrompt(e);
     };
     window.addEventListener('beforeinstallprompt', onBeforeInstall as EventListener);
 
@@ -51,16 +55,17 @@ export default function Onboarding() {
     }
 
     return () => {
+      mediaQuery.removeEventListener('change', handleMediaChange);
       window.removeEventListener('beforeinstallprompt', onBeforeInstall as EventListener);
     };
   }, []);
 
   const handleCheckPwa = async () => {
     // On desktop, try showing the native install prompt first
-    if (isDesktop && deferredPrompt.current) {
-      deferredPrompt.current.prompt();
-      const result = await deferredPrompt.current.userChoice;
-      deferredPrompt.current = null;
+    if (isDesktop && deferredPrompt) {
+      deferredPrompt.prompt();
+      const result = await deferredPrompt.userChoice;
+      setDeferredPrompt(null);
       if (result.outcome === "accepted") {
         setPwaInstalled(true);
         toast.success("App installed successfully!");
@@ -152,7 +157,7 @@ export default function Onboarding() {
 
       localStorage.setItem("easiride_onboarding_done", "1");
       toast.success("You are now online and ready to receive rides!");
-      window.location.href = "/dashboard";
+      navigate("/dashboard", { replace: true });
     } catch (err: any) {
       console.error("handleGoOnline error:", err);
       toast.error(err?.message || "Failed to complete setup. Please try again.");
@@ -247,7 +252,7 @@ export default function Onboarding() {
                     disabled={checkingPwa}
                     className="w-full py-3.5 bg-white text-black text-sm font-bold rounded-2xl hover:bg-white/90 transition-colors disabled:opacity-50"
                   >
-                    {checkingPwa ? "Checking..." : deferredPrompt.current ? "Install Now" : "I've Installed It"}
+                    {checkingPwa ? "Checking..." : deferredPrompt ? "Install Now" : "I've Installed It"}
                   </button>
                 </div>
               )}
@@ -280,7 +285,6 @@ export default function Onboarding() {
               {!notificationsEnabled && (
                 <button 
                   onClick={requestNotifications}
-                  disabled={!pwaInstalled} // Enforce order
                   className="w-full py-3.5 bg-white text-black text-sm font-bold rounded-2xl hover:bg-white/90 transition-colors disabled:opacity-30 disabled:hover:bg-white"
                 >
                   Enable Notifications

@@ -6,11 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatNLe(amount: number) {
-  return new Intl.NumberFormat("en-SL", {
-    style: "currency",
-    currency: "SLL",
-    currencyDisplay: "code",
-  }).format(amount).replace("SLL", "NLe");
+  return `NLe ${Math.round(amount).toLocaleString("en-US")}`;
 }
 
 export function formatRelative(iso: string) {

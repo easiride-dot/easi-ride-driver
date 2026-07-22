@@ -4,6 +4,7 @@ import {
   MessageSquareWarning, ArrowLeft, Loader2, MapPin, Navigation,
   Phone, User, CheckCircle, Clock
 } from "lucide-react";
+import { toast } from "sonner";
 import * as Drawer from "vaul";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -54,6 +55,8 @@ export default function ActiveRidePage() {
   const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [snap, setSnap] = useState<number | string | null>(0.85);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
 
   const geoState = useGeolocation(id);
@@ -134,19 +137,32 @@ export default function ActiveRidePage() {
   useGeofence({ ride, geoState, onStatusChange: (s) => setRide((prev) => (prev ? { ...prev, status: s } : null)) });
 
   const handleEmergency = () => {
+    if (!window.confirm("Are you sure you want to send an emergency alert?")) return;
     openWhatsApp(undefined, `EMERGENCY: I am a driver (${driver?.full_name}, ${driver?.phone}). I need immediate assistance on ride ${id}.`);
   };
 
   const handleStatusChange = async (newStatus: string) => {
+    if (!id) return;
+    setStatusLoading(true);
     const { error } = await supabase.from("rides").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", id);
-    if (error) console.error("Failed to update ride status:", error);
+    setStatusLoading(false);
+    if (error) {
+      console.error("Failed to update ride status:", error);
+      toast.error("Failed to update status. Please try again.");
+    }
   };
 
   const handleCancelRide = async () => {
-    if (!driver) return;
+    if (!driver || !id) return;
+    setCancelling(true);
     const { error } = await supabase.rpc("cancel_ride", { ride_id: id, driver_user_id: driver.id });
-    if (error) console.error("Failed to cancel ride:", error);
-    else navigate("/dashboard");
+    setCancelling(false);
+    if (error) {
+      console.error("Failed to cancel ride:", error);
+      toast.error("Failed to cancel ride.");
+    } else {
+      navigate("/dashboard");
+    }
   };
 
   if (loading) return (
@@ -162,7 +178,7 @@ export default function ActiveRidePage() {
         <MessageSquareWarning className="h-8 w-8 text-destructive" />
       </div>
       <h2 className="text-xl font-display font-semibold mb-2">Error</h2>
-      <p className="text-muted-foreground text-sm mb-8">{error}</p>
+      <p className="text-muted-foreground text-sm mb-8">{error || "Ride not found."}</p>
       <button onClick={() => navigate("/dashboard")} className="flex items-center gap-2 text-sm font-semibold text-primary hover:underline uppercase tracking-wider">
         <ArrowLeft className="h-4 w-4" /> Return to Dashboard
       </button>
@@ -323,30 +339,30 @@ export default function ActiveRidePage() {
               {!isCompleted && (
                 <div className="space-y-2 pt-2">
                   {ride.status === "driver_assigned" && (
-                    <button onClick={() => handleStatusChange("driver_arrived")}
-                      className="w-full flex items-center justify-center gap-2 h-14 rounded-2xl bg-amber-500 hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20">
-                      <Clock className="h-5 w-5 text-white" />
+                    <button onClick={() => handleStatusChange("driver_arrived")} disabled={statusLoading}
+                      className="w-full flex items-center justify-center gap-2 h-14 rounded-2xl bg-amber-500 hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20 disabled:opacity-50">
+                      {statusLoading ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Clock className="h-5 w-5 text-white" />}
                       <span className="text-sm font-bold text-white">Arrived at Pickup</span>
                     </button>
                   )}
                   {ride.status === "driver_arrived" && (
-                    <button onClick={() => handleStatusChange("in_progress")}
-                      className="w-full flex items-center justify-center gap-2 h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20">
-                      <Navigation className="h-5 w-5 text-white" />
+                    <button onClick={() => handleStatusChange("in_progress")} disabled={statusLoading}
+                      className="w-full flex items-center justify-center gap-2 h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50">
+                      {statusLoading ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Navigation className="h-5 w-5 text-white" />}
                       <span className="text-sm font-bold text-white">Start Ride</span>
                     </button>
                   )}
                   {ride.status === "in_progress" && (
-                    <button onClick={() => handleStatusChange("completed")}
-                      className="w-full flex items-center justify-center gap-2 h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20">
-                      <CheckCircle className="h-5 w-5 text-white" />
+                    <button onClick={() => handleStatusChange("completed")} disabled={statusLoading}
+                      className="w-full flex items-center justify-center gap-2 h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50">
+                      {statusLoading ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <CheckCircle className="h-5 w-5 text-white" />}
                       <span className="text-sm font-bold text-white">Complete Ride</span>
                     </button>
                   )}
                   {(ride.status === "driver_assigned" || ride.status === "driver_arrived") && (
-                    <button onClick={handleCancelRide}
-                      className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 transition-colors">
-                      <MessageSquareWarning className="h-5 w-5 text-destructive" />
+                    <button onClick={handleCancelRide} disabled={cancelling}
+                      className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 transition-colors disabled:opacity-50">
+                      {cancelling ? <Loader2 className="h-5 w-5 text-destructive animate-spin" /> : <MessageSquareWarning className="h-5 w-5 text-destructive" />}
                       <span className="text-sm font-semibold text-destructive">Cancel Ride</span>
                     </button>
                   )}

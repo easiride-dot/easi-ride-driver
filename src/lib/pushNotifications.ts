@@ -24,6 +24,9 @@ export const getExistingPushSubscription = async () => {
 };
 
 export const subscribeToPushNotifications = async (userId: string) => {
+  if (!VAPID_PUBLIC_KEY) {
+    throw new Error("VAPID public key is not configured.");
+  }
   await registerServiceWorker();
   const registration = await navigator.serviceWorker.ready;
 

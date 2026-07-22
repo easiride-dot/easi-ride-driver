@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function ProtectedRoute() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, driver, loading: authLoading } = useAuth();
 
   if (authLoading) {
     return (
@@ -22,7 +22,7 @@ export function ProtectedRoute() {
     );
   }
 
-  if (!user) {
+  if (!user || !driver) {
     return <Navigate to="/auth" replace />;
   }
 

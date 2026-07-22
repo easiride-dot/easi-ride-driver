@@ -57,6 +57,9 @@ export function useGeolocation(rideId?: string | null) {
     [user, rideId]
   );
 
+  const upsertRef = useRef(upsertLocation);
+  upsertRef.current = upsertLocation;
+
   const startWatching = useCallback(() => {
     if (!navigator.geolocation) {
       setState((s) => ({
@@ -66,7 +69,7 @@ export function useGeolocation(rideId?: string | null) {
       return;
     }
 
-    if (watchIdRef.current !== null) return; // already watching
+    if (watchIdRef.current !== null) return;
 
     setState((s) => ({ ...s, isWatching: true, error: null }));
 
@@ -81,7 +84,7 @@ export function useGeolocation(rideId?: string | null) {
           error: null,
           isWatching: true,
         });
-        upsertLocation(pos);
+        upsertRef.current(pos);
       },
       (err) => {
         setState((s) => ({
@@ -92,14 +95,22 @@ export function useGeolocation(rideId?: string | null) {
       },
       WATCH_OPTIONS
     );
-  }, [upsertLocation]);
+  }, []);
 
   const stopWatching = useCallback(() => {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
     }
-    setState((s) => ({ ...s, isWatching: false }));
+    setState({
+      latitude: null,
+      longitude: null,
+      accuracy: null,
+      heading: null,
+      speed: null,
+      error: null,
+      isWatching: false,
+    });
   }, []);
 
   // Cleanup on unmount

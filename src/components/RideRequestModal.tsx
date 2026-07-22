@@ -29,18 +29,22 @@ export function RideRequestModal({ ride, onAccept, onDecline, queuePosition = 1,
       setSecondsLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
-          if (!autoDeclinedRef.current) {
-            autoDeclinedRef.current = true;
-            onDecline();
-          }
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
 
+    const autoDeclineTimer = setTimeout(() => {
+      if (!autoDeclinedRef.current) {
+        autoDeclinedRef.current = true;
+        onDecline();
+      }
+    }, COUNTDOWN_SECONDS * 1000);
+
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      clearTimeout(autoDeclineTimer);
     };
   }, [ride.id, ride.invitation_id, onDecline]);
 

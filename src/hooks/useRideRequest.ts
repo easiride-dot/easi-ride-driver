@@ -5,7 +5,9 @@ import { useAuth } from "./useAuth";
 
 const playNotificationSound = () => {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
@@ -16,16 +18,16 @@ const playNotificationSound = () => {
     osc.start();
     osc.stop(ctx.currentTime + 0.15);
     setTimeout(() => {
-      const ctx2 = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc2 = ctx2.createOscillator();
-      const gain2 = ctx2.createGain();
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
       osc2.connect(gain2);
-      gain2.connect(ctx2.destination);
+      gain2.connect(ctx.destination);
       osc2.type = "sine";
       osc2.frequency.value = 1000;
       gain2.gain.value = 0.3;
       osc2.start();
-      osc2.stop(ctx2.currentTime + 0.2);
+      osc2.stop(ctx.currentTime + 0.35);
+      setTimeout(() => ctx.close(), 500);
     }, 200);
   } catch {}
 };
@@ -51,12 +53,19 @@ interface UseRideRequestOptions {
   enabled: boolean;
 }
 
+type InvitationPayload = {
+  new?: Record<string, unknown>;
+  old?: Record<string, unknown>;
+  eventType?: string;
+};
+
 export function useRideRequest({ enabled }: UseRideRequestOptions) {
   const { user, driver } = useAuth();
   const [incomingRides, setIncomingRides] = useState<IncomingRide[]>([]);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const checkPendingRef = useRef<(() => void) | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const removeRideFromQueueRef = useRef<(rideId: string) => void>(() => {});
 
   const incomingRide = incomingRides.length > 0 ? incomingRides[0] : null;
   const pendingCount = incomingRides.length;
@@ -65,11 +74,12 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
     setIncomingRides((prev) => prev.filter((r) => r.id !== rideId));
   }, []);
 
+  removeRideFromQueueRef.current = removeRideFromQueue;
+
   const clearIncoming = useCallback(() => {
     setIncomingRides([]);
   }, []);
 
-  // Play sound + vibrate when a new ride arrives (not on re-renders)
   const prevCountRef = useRef(0);
   useEffect(() => {
     if (incomingRides.length > prevCountRef.current) {
@@ -82,11 +92,8 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
   }, [incomingRides.length]);
 
   const acknowledgeInvitation = useCallback(async (invitationId: string) => {
-    try {
-      await supabase.rpc("acknowledge_invitation", { p_invitation_id: invitationId });
-    } catch {
-      // silent — best-effort acknowledgement
-    }
+    const { error } = await supabase.rpc("acknowledge_invitation", { p_invitation_id: invitationId });
+    if (error) console.error("acknowledgeInvitation failed:", error);
   }, []);
 
   useEffect(() => {
@@ -103,13 +110,30 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
       return;
     }
 
-    const handleNewInvitation = async (payload: { new: Record<string, unknown> }) => {
+    let cancelled = false;
+
+    const handleInvitationChange = async (payload: InvitationPayload) => {
       try {
+        const rideId =
+          (payload.new?.ride_id as string | undefined) ??
+          (payload.old?.ride_id as string | undefined);
+
+        if (payload.eventType === "DELETE") {
+          if (rideId) removeRideFromQueueRef.current(rideId);
+          return;
+        }
+
         const inv = payload.new;
-        if (inv.status !== "pending") return;
+        if (!inv) return;
+
+        if (inv.status !== "pending") {
+          if (rideId) removeRideFromQueueRef.current(rideId);
+          return;
+        }
+
         if (inv.driver_id !== user.id) return;
 
-        const rideId = inv.ride_id as string;
+        if (!rideId) return;
 
         const { data: ride } = await supabase
           .from("rides")
@@ -155,7 +179,7 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
 
         acknowledgeInvitation(inv.id as string);
       } catch (err) {
-        console.error("handleNewInvitation error:", err);
+        console.error("handleInvitationChange error:", err);
       }
     };
 
@@ -211,51 +235,60 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
             }
           }
         }
-      } catch {
-        // silent
+      } catch (err) {
+        console.error("checkForPending failed:", err);
       }
     };
 
     checkPendingRef.current = checkForPending;
     checkForPending();
 
-    const channel = supabase
-      .channel(`ride-invitations-${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "ride_invitations",
-          filter: `driver_id=eq.${user.id}`,
-        },
-        (payload) => {
-          handleNewInvitation(payload as { new: Record<string, unknown> });
-        }
-      )
-      .subscribe((status) => {
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          // Auto-reconnect after 3 seconds
-          if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-          }
-          reconnectTimeoutRef.current = setTimeout(() => {
-            if (channelRef.current) {
-              supabase.removeChannel(channelRef.current);
-            }
-            channelRef.current = null;
-            if (checkPendingRef.current) {
-              checkPendingRef.current();
-            }
-          }, 3000);
-        }
-      });
+    const subscribeToInvitations = () => {
+      if (cancelled) return;
 
-    channelRef.current = channel;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+
+      const channel = supabase
+        .channel(`ride-invitations-${user.id}-${Date.now()}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "ride_invitations",
+            filter: `driver_id=eq.${user.id}`,
+          },
+          (payload) => {
+            handleInvitationChange(payload as InvitationPayload);
+          }
+        )
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            if (reconnectTimeoutRef.current) {
+              clearTimeout(reconnectTimeoutRef.current);
+            }
+            reconnectTimeoutRef.current = setTimeout(() => {
+              if (cancelled) return;
+              checkPendingRef.current?.();
+              subscribeToInvitations();
+            }, 3000);
+          }
+        });
+
+      channelRef.current = channel;
+    };
+
+    subscribeToInvitations();
 
     return () => {
-      supabase.removeChannel(channel);
-      channelRef.current = null;
+      cancelled = true;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
@@ -293,7 +326,6 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
 
         removeRideFromQueue(rideId);
 
-        // Send push to student from the client as backup
         if (studentUserId && driver) {
           try {
             await fetch(
@@ -348,14 +380,12 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
         if (result.success) {
           removeRideFromQueue(rideId);
           return true;
-        } else {
-          console.error("Decline ride failed:", result.reason);
-          removeRideFromQueue(rideId);
-          return false;
         }
+
+        console.error("Decline ride failed:", result.reason);
+        return false;
       } catch (err) {
         console.error("Decline ride error:", err);
-        removeRideFromQueue(rideId);
         return false;
       }
     },

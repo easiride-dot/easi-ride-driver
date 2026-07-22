@@ -20,59 +20,38 @@ export default function History() {
   const [rides, setRides] = useState<HistoryRide[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
+
+  const fetchHistory = async () => {
+    if (!driver) return;
+    try {
+      const { data, error } = await supabase
+        .from("rides")
+        .select("id, created_at, pickup, destination, distance_km, fare_amount, status")
+        .eq("driver_id", driver.id)
+        .eq("status", "completed")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setRides(data as HistoryRide[]);
+      setFetchError(false);
+    } catch (err) {
+      console.error("Failed to fetch history:", err);
+      setFetchError(true);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    if (!driver) return;
-
-    const fetchHistory = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("rides")
-          .select("id, created_at, pickup, destination, distance_km, fare_amount, status")
-          .eq("driver_id", driver.id)
-          .eq("status", "completed")
-          .order("created_at", { ascending: false })
-          .limit(50);
-
-        if (error) throw error;
-        setRides(data as HistoryRide[]);
-      } catch (err) {
-        console.error("Failed to fetch history:", err);
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
-      }
-    };
-
     fetchHistory();
   }, [driver]);
 
   const handleRefresh = () => {
     setRefreshing(true);
-    setLoading(true);
-    // Re-trigger the useEffect by updating a dependency or calling fetch directly
-    if (driver) {
-      const fetchHistory = async () => {
-        try {
-          const { data, error } = await supabase
-            .from("rides")
-            .select("id, created_at, pickup, destination, distance_km, fare_amount, status")
-            .eq("driver_id", driver.id)
-            .eq("status", "completed")
-            .order("created_at", { ascending: false })
-            .limit(50);
-
-          if (error) throw error;
-          setRides(data as HistoryRide[]);
-        } catch (err) {
-          console.error("Failed to fetch history:", err);
-        } finally {
-          setLoading(false);
-          setRefreshing(false);
-        }
-      };
-      fetchHistory();
-    }
+    fetchHistory();
   };
 
   const totalEarnings = rides.reduce((sum, ride) => {
@@ -138,9 +117,9 @@ export default function History() {
               <div className="mx-auto h-16 w-16 rounded-full bg-secondary flex items-center justify-center mb-4">
                 <Clock className="h-6 w-6 text-muted-foreground" />
               </div>
-              <p className="text-foreground font-medium">No rides yet</p>
+              <p className="text-foreground font-medium">{fetchError ? "Failed to load history" : "No rides yet"}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Your completed rides will appear here.
+                {fetchError ? "Pull to refresh and try again." : "Your completed rides will appear here."}
               </p>
             </div>
           ) : (
@@ -164,7 +143,7 @@ export default function History() {
                       {ride.fare_amount ? formatNLe(Math.floor(ride.fare_amount * 0.8)) : "—"}
                     </p>
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      {ride.distance_km?.toFixed(1)} km
+                      {ride.distance_km != null ? `${ride.distance_km.toFixed(1)} km` : "—"}
                     </p>
                   </div>
                 </div>

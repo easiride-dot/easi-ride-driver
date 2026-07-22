@@ -1,4 +1,4 @@
-import { User, Phone, Car, Tag, ShieldCheck, HelpCircle, LogOut, Sun, Moon } from "lucide-react";
+import { User, Phone, Car, Tag, ShieldCheck, HelpCircle, LogOut, Sun, Moon, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,11 @@ export default function Profile() {
     signOut();
   };
 
-  if (!driver) return null;
+  if (!driver) return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <Loader2 className="h-8 w-8 text-primary animate-spin" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background pb-24">

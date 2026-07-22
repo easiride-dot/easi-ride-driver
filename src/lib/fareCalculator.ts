@@ -33,10 +33,3 @@ export function calcFare(distanceKm: number, config: PricingConfig): number {
 export function driverEarnings(totalFare: number): number {
   return Math.floor(totalFare * 0.8);
 }
-
-/**
- * Format as NLe currency string.
- */
-export function formatNLe(amount: number): string {
-  return `NLe ${amount.toFixed(2)}`;
-}

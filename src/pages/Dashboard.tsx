@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Power, Wifi, WifiOff, Car, Bell, BellRing, X, TrendingUp, Smartphone, Monitor, MapPin, CheckCircle2, Loader2, Share2, Plus, Clock, Navigation, MapPin as MapPinIcon, AlertTriangle } from "lucide-react";
+import { Power, Wifi, WifiOff, Car, Bell, X, TrendingUp, Smartphone, Monitor, MapPin, CheckCircle2, Loader2, Share2, Plus, Clock, Navigation, AlertTriangle } from "lucide-react";
 import * as Drawer from "vaul";
 import { toast } from "sonner";
 import { cn, formatTime, formatNLe } from "@/lib/utils";
@@ -22,7 +22,7 @@ export default function Dashboard() {
   const [pushState, setPushState] = useState<"loading" | "prompt" | "enabled" | "unsupported">("loading");
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [todayRides, setTodayRides] = useState(0);
-  const [isPwaInstalled, setIsPwaInstalled] = useState(true);
+  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -59,9 +59,12 @@ export default function Dashboard() {
       });
   }, [driver, startWatching]);
 
-  // Redirect to active ride if one is in progress
+  const activeRideCheckedRef = useRef(false);
+
+  // Redirect to active ride once on load (not on every dashboard visit)
   useEffect(() => {
-    if (!driver) return;
+    if (!driver || activeRideCheckedRef.current) return;
+    activeRideCheckedRef.current = true;
     supabase
       .from("rides")
       .select("id, status, updated_at")
@@ -718,7 +721,7 @@ function RequestCard({ ride, queuePosition, queueTotal, onAccept, onDecline }: {
             <p className="text-[10px] text-muted-foreground truncate">{ride.type ? ride.type.replace(/_/g, " ") : "Ride"}</p>
           </div>
           {ride.fare_amount != null && (
-            <p className="text-xs font-semibold text-emerald-400 mt-0.5">You'll earn: {Math.floor(ride.fare_amount * 0.8)} NLe</p>
+            <p className="text-xs font-semibold text-emerald-400 mt-0.5">You'll earn: {formatNLe(Math.floor(ride.fare_amount * 0.8))}</p>
           )}
         </div>
         <div className={cn(
@@ -732,7 +735,7 @@ function RequestCard({ ride, queuePosition, queueTotal, onAccept, onDecline }: {
 
       <div className="space-y-1.5 mb-4">
         <div className="flex items-center gap-2 text-xs">
-          <MapPinIcon className="h-3 w-3 text-muted-foreground shrink-0" />
+          <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
           <span className="truncate text-foreground/80">{ride.pickup}</span>
         </div>
         <div className="flex items-center gap-2 text-xs">

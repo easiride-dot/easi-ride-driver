@@ -98,13 +98,13 @@ export function ActiveRideMap({
 
     const now = Date.now();
     if (now - lastRouteFetch.current < 5000) return;
-    lastRouteFetch.current = now;
 
     const fetchRoute = async () => {
       try {
         const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
         const res = await fetch(url);
         const data = await res.json();
+        lastRouteFetch.current = Date.now();
 
         if (data.code === "Ok" && data.routes?.[0]?.geometry?.coordinates) {
           const coords: [number, number][] = data.routes[0].geometry.coordinates.map(
