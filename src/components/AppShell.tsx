@@ -1,5 +1,5 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, Clock, User, Navigation } from "lucide-react";
+import { NavLink, Outlet } from "react-router-dom";
+import { LayoutDashboard, Clock, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -9,9 +9,6 @@ const NAV_ITEMS = [
 ];
 
 export function AppShell() {
-  const location = useLocation();
-  const isActiveRide = location.pathname.startsWith("/ride/");
-
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Page content */}
@@ -22,20 +19,7 @@ export function AppShell() {
       {/* Bottom navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-hairline bg-background/95 backdrop-blur-md safe-area-inset-bottom">
         <div className="flex items-center justify-around px-2 py-2">
-          {isActiveRide ? (
-            <NavLink
-              to={location.pathname}
-              className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl text-foreground"
-            >
-              <div className="p-1.5 rounded-lg bg-primary/10">
-                <Navigation className="h-5 w-5 text-primary stroke-[2.5px]" />
-              </div>
-              <span className="text-[10px] uppercase tracking-[0.12em] font-medium text-foreground">
-                Active
-              </span>
-            </NavLink>
-          ) : (
-            NAV_ITEMS.map(({ to, icon: Icon, label }) => (
+          {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
               <NavLink
                 key={to}
                 to={to}

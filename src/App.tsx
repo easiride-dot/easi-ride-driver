@@ -26,8 +26,8 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/history" element={<History />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/ride/:id" element={<ActiveRide />} />
             </Route>
+            <Route path="/ride/:id" element={<ActiveRide />} />
           </Route>
           
           <Route path="*" element={<NotFound />} />
