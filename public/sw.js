@@ -1,4 +1,4 @@
-const CACHE_NAME = 'easi-ride-driver-v1';
+const CACHE_NAME = 'easi-ride-driver-v2';
 const precacheManifest = self.__WB_MANIFEST || [];
 const urlsToCache = [
   '/',
@@ -7,6 +7,7 @@ const urlsToCache = [
 ].filter(Boolean);
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -51,7 +52,7 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
