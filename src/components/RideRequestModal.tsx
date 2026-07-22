@@ -77,7 +77,6 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
   const isUrgent = secondsLeft <= 10;
 
   return (
-    /* Full-screen overlay */}
     <div className="fixed inset-0 z-[9999] flex flex-col" onClick={(e) => console.log("Overlay clicked", e)}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
