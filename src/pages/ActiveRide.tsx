@@ -166,6 +166,7 @@ export default function ActiveRidePage() {
   };
 
   if (loading) return (
+    <div className="min-h-screen bg-background flex items-center justify-center gap-4">
       <Loader2 className="h-8 w-8 text-primary animate-spin" />
       <p className="text-sm text-muted-foreground uppercase tracking-widest">Loading ride...</p>
     </div>
