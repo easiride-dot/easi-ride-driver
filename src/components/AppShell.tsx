@@ -59,8 +59,7 @@ export function AppShell() {
                   </>
                 )}
               </NavLink>
-            ))
-          )}
+          ))}
         </div>
       </nav>
     </div>
