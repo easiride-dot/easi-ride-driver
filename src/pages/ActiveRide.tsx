@@ -11,38 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useGeofence, ActiveRide } from "@/hooks/useGeofence";
 import { ActiveRideMap } from "@/components/ActiveRideMap";
-import { openWhatsApp, formatNLe, cn } from "@/lib/utils";
-
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; sublabel: string; color: string; bgColor: string }
-> = {
-  driver_assigned: {
-    label: "Heading to Pickup",
-    sublabel: "Drive to the pickup location",
-    color: "text-blue-400", bgColor: "bg-blue-500/15",
-  },
-  driver_arrived: {
-    label: "Arrived at Pickup",
-    sublabel: "Waiting for passenger to board",
-    color: "text-amber-400", bgColor: "bg-amber-500/15",
-  },
-  in_progress: {
-    label: "En Route to Destination",
-    sublabel: "Driving to drop-off",
-    color: "text-emerald-400", bgColor: "bg-emerald-500/15",
-  },
-  completed: {
-    label: "Ride Completed",
-    sublabel: "Great ride!",
-    color: "text-emerald-400", bgColor: "bg-emerald-500/15",
-  },
-  cancelled: {
-    label: "Cancelled",
-    sublabel: "This ride was cancelled",
-    color: "text-destructive", bgColor: "bg-destructive/15",
-  },
-};
+import { openWhatsApp, formatNLe } from "@/lib/utils";
 
 export default function ActiveRidePage() {
   const { id } = useParams<{ id: string }>();
@@ -186,7 +155,6 @@ export default function ActiveRidePage() {
   );
 
   const isCompleted = ride.status === "completed" || ride.status === "cancelled";
-  const config = STATUS_CONFIG[ride.status] ?? STATUS_CONFIG["driver_assigned"];
   const driverEarnings = ride.fare_amount ? Math.floor(ride.fare_amount * 0.8) : null;
 
   const formatEta = (seconds: number | null | undefined) => {
@@ -230,34 +198,13 @@ export default function ActiveRidePage() {
           <Drawer.Overlay className="fixed inset-0 bg-black/40" />
           <Drawer.Content
             ref={drawerRef}
-            className="fixed bottom-0 left-0 right-0 z-30 flex flex-col rounded-t-3xl bg-[#1A1A1A] border-t border-hairline outline-none max-h-[85dvh] overflow-hidden"
+            className="fixed bottom-0 left-0 right-0 z-30 flex flex-col rounded-t-3xl bg-[#1A1A1A] border-t border-hairline outline-none max-h-[85dvh] overflow-y-auto"
             style={{ boxShadow: "0 -8px 30px rgba(0,0,0,0.3)" }}
           >
             {/* Drag handle */}
             <div className="mx-auto mt-3 mb-2 h-1.5 w-12 rounded-full bg-border flex-shrink-0" />
 
-            <div className="flex-1 overflow-y-auto px-5 pb-8 space-y-4 min-h-0">
-              {/* Status banner */}
-              <div className={cn("flex items-center gap-3 rounded-2xl px-4 py-3", config.bgColor)}>
-                <div className={cn("flex-shrink-0", config.color)}>
-                  {ride.status === "in_progress" ? (
-                    <Navigation className="h-5 w-5 animate-pulse" />
-                  ) : (
-                    <MapPin className="h-5 w-5" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className={cn("text-sm font-semibold", config.color)}>{config.label}</p>
-                  <p className="text-xs text-muted-foreground">{config.sublabel}</p>
-                </div>
-                {!isCompleted && formatEta(etaSeconds) && (
-                  <div className="text-right">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">ETA</p>
-                    <p className="text-sm font-bold text-foreground">{formatEta(etaSeconds)}</p>
-                  </div>
-                )}
-              </div>
-
+            <div className="px-5 pb-8 space-y-4">
               {/* Fare / Payment card */}
               {!isCompleted && (
                 <div className="rounded-2xl bg-background border border-hairline p-4">
