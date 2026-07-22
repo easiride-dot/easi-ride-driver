@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRideRequest, IncomingRide } from "@/hooks/useRideRequest";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { subscribeToPushNotifications, getExistingPushSubscription } from "@/lib/pushNotifications";
 
 export default function Dashboard() {
