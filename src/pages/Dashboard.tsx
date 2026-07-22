@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showIosPwaGuide, setShowIosPwaGuide] = useState(false);
+  const [activeRide, setActiveRide] = useState<{ id: string; pickup: string; destination: string; status: string } | null>(null);
 
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
@@ -60,27 +61,47 @@ export default function Dashboard() {
       });
   }, [driver, startWatching]);
 
-  const activeRideCheckedRef = useRef(false);
+  // Redirect to active ride on first visit, or store for card display
+  const activeRideFetchedRef = useRef(false);
 
-  // Redirect to active ride once on load (not on every dashboard visit)
   useEffect(() => {
-    if (!driver || activeRideCheckedRef.current) return;
-    if (location.state?.fromActiveRide) return;
-    activeRideCheckedRef.current = true;
+    if (!driver || activeRideFetchedRef.current) return;
+    activeRideFetchedRef.current = true;
     supabase
       .from("rides")
-      .select("id, status, updated_at")
+      .select("id, pickup, destination, status, updated_at")
       .eq("driver_id", driver.id)
       .in("status", ["driver_assigned", "driver_arrived", "in_progress"])
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) {
+        if (!data) return;
+        setActiveRide({ id: data.id, pickup: data.pickup, destination: data.destination, status: data.status });
+        if (!location.state?.fromActiveRide) {
           navigate(`/ride/${data.id}`, { replace: true });
         }
       });
   }, [driver, navigate]);
+
+  // Keep activeRide in sync via realtime
+  useEffect(() => {
+    if (!driver || !activeRide) return;
+    const channel = supabase
+      .channel(`active-ride-dash-${activeRide.id}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "rides", filter: `id=eq.${activeRide.id}` },
+        (payload) => {
+          const updated = payload.new as Record<string, any>;
+          if (["completed", "cancelled"].includes(updated.status)) {
+            setActiveRide(null);
+          } else {
+            setActiveRide((prev) => prev ? { ...prev, status: updated.status } : prev);
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [driver, activeRide?.id]);
 
   // Check PWA installation
   useEffect(() => {
@@ -362,6 +383,33 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Active Ride Card */}
+      {activeRide && (
+        <div className="px-5 mb-2">
+          <button
+            onClick={() => navigate(`/ride/${activeRide.id}`, { state: { fromDashboard: true } })}
+            className="w-full rounded-2xl p-4 border-2 border-emerald-500/30 bg-emerald-500/5 shadow-soft text-left transition hover:bg-emerald-500/10"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                </span>
+                <span className="text-sm font-semibold text-foreground">Active Ride</span>
+              </div>
+              <span className="text-[10px] uppercase tracking-wider text-emerald-400 font-medium">
+                {activeRide.status === "driver_arrived" ? "Arrived" : activeRide.status === "in_progress" ? "En Route" : "Assigned"}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground truncate">{activeRide.pickup} → {activeRide.destination}</p>
+            <div className="mt-3 w-full rounded-xl bg-emerald-500/20 py-2.5 text-center text-sm font-bold text-emerald-400">
+              Tap to Resume
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* Main content */}
       <div className="px-5 space-y-5">
