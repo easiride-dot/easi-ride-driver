@@ -211,6 +211,8 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
 
       try {
         const apiBase = import.meta.env.VITE_API_URL || "";
+        console.log("Accepting ride:", { rideId, apiBase, hasToken: !!token });
+        
         const response = await fetch(`${apiBase}/api/dispatch`, {
           method: "POST",
           headers: {
@@ -221,9 +223,10 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
         });
 
         const result = await response.json();
+        console.log("Accept ride response:", result);
 
         if (!result.success) {
-          console.warn("Accept ride failed:", result.reason);
+          console.error("Accept ride failed:", result.reason);
           return false;
         }
 
@@ -249,14 +252,15 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
                 }),
               }
             );
-          } catch {
-            // best-effort
+          } catch (err) {
+            console.error("Push notification failed:", err);
           }
         }
 
         checkPendingRef.current?.();
         return true;
-      } catch {
+      } catch (err) {
+        console.error("Accept ride error:", err);
         return false;
       }
     },
@@ -272,6 +276,8 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
 
       try {
         const apiBase = import.meta.env.VITE_API_URL || "";
+        console.log("Declining ride:", { rideId, apiBase, hasToken: !!token });
+        
         const response = await fetch(`${apiBase}/api/dispatch`, {
           method: "POST",
           headers: {
@@ -282,12 +288,16 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
         });
 
         const result = await response.json();
+        console.log("Decline ride response:", result);
+        
         if (result.success) {
           clearIncoming();
           return true;
+        } else {
+          console.error("Decline ride failed:", result.reason);
         }
-      } catch {
-        // API unreachable
+      } catch (err) {
+        console.error("Decline ride error:", err);
       }
 
       return false;

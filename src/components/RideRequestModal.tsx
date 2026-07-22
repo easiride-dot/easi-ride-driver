@@ -47,7 +47,11 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
     if (timerRef.current) clearInterval(timerRef.current);
     setIsLoading(true);
     try {
+      console.log("RideRequestModal: Calling onAccept");
       await onAccept();
+      console.log("RideRequestModal: onAccept completed");
+    } catch (err) {
+      console.error("RideRequestModal: onAccept error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -57,7 +61,11 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
     if (timerRef.current) clearInterval(timerRef.current);
     setIsLoading(true);
     try {
+      console.log("RideRequestModal: Calling onDecline");
       await onDecline();
+      console.log("RideRequestModal: onDecline completed");
+    } catch (err) {
+      console.error("RideRequestModal: onDecline error:", err);
     } finally {
       setIsLoading(false);
     }

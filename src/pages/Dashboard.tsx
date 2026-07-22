@@ -196,19 +196,27 @@ export default function Dashboard() {
 
   const handleAcceptRide = async () => {
     if (!incomingRide) return;
+    console.log("handleAcceptRide called with ride:", incomingRide);
     const ok = await acceptRide(incomingRide.id, incomingRide.user_id);
+    console.log("acceptRide returned:", ok);
     if (ok) {
       toast.success("Ride accepted! Head to the pickup.");
       navigate(`/ride/${incomingRide.id}`);
     } else {
-      toast.error("Failed to accept ride.");
+      toast.error("Failed to accept ride. Check console for details.");
     }
   };
 
   const handleDeclineRide = async () => {
     if (!incomingRide) return;
-    await declineRide(incomingRide.id);
-    toast("Ride declined.");
+    console.log("handleDeclineRide called with ride:", incomingRide);
+    const ok = await declineRide(incomingRide.id);
+    console.log("declineRide returned:", ok);
+    if (ok) {
+      toast("Ride declined.");
+    } else {
+      toast.error("Failed to decline ride. Check console for details.");
+    }
   };
 
   // Check push notification state
