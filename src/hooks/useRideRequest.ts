@@ -182,7 +182,7 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "ride_invitations",
           filter: `driver_id=eq.${user.id}`,
