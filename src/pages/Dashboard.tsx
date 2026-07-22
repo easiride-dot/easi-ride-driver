@@ -97,7 +97,7 @@ export default function Dashboard() {
   // Check onboarding status
   useEffect(() => {
     if (!driver) return;
-    if (driver.onboarding_completed === false) {
+    if (driver.onboarding_completed === false && !localStorage.getItem("easiride_onboarding_done")) {
       setShowOnboarding(true);
     }
   }, [driver]);
@@ -284,6 +284,7 @@ export default function Dashboard() {
 
       if (error) throw error;
       await refreshDriver();
+      localStorage.setItem("easiride_onboarding_done", "1");
       setShowOnboarding(false);
       toast.success("Setup complete!");
     } catch {
@@ -734,9 +735,14 @@ function RequestCard({ ride, queuePosition, queueTotal, onAccept, onDecline }: {
           <Navigation className="h-3 w-3 text-muted-foreground shrink-0" />
           <span className="truncate text-foreground/80">{ride.destination}</span>
         </div>
-        {ride.distance_km && (
-          <p className="text-[10px] text-muted-foreground pl-5">{ride.distance_km.toFixed(1)} km</p>
-        )}
+        <div className="flex items-center justify-between pl-5">
+          {ride.distance_km && (
+            <span className="text-[10px] text-muted-foreground">{ride.distance_km.toFixed(1)} km</span>
+          )}
+          {ride.fare_amount != null && (
+            <span className="text-xs font-semibold text-foreground">{ride.fare_amount} NLe</span>
+          )}
+        </div>
       </div>
 
       {isUrgent && (

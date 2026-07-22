@@ -150,6 +150,7 @@ export default function Onboarding() {
         throw new Error("Onboarding completion not persisted");
       }
 
+      localStorage.setItem("easiride_onboarding_done", "1");
       toast.success("You are now online and ready to receive rides!");
       window.location.href = "/dashboard";
     } catch (err: any) {
