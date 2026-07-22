@@ -1,4 +1,4 @@
-const CACHE_NAME = 'easi-ride-driver-v2';
+const CACHE_NAME = 'easi-ride-driver-v3';
 const precacheManifest = self.__WB_MANIFEST || [];
 const urlsToCache = [
   '/',
