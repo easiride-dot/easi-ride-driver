@@ -77,13 +77,13 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
   const isUrgent = secondsLeft <= 10;
 
   return (
-    /* Full-screen overlay */
-    <div className="fixed inset-0 z-[9999] flex flex-col">
+    /* Full-screen overlay */}
+    <div className="fixed inset-0 z-[9999] flex flex-col" onClick={(e) => console.log("Overlay clicked", e)}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
       {/* Modal — slides up from bottom */}
-      <div className="absolute bottom-0 left-0 right-0 animate-fade-up">
+      <div className="absolute bottom-0 left-0 right-0 animate-fade-up" onClick={(e) => console.log("Modal container clicked", e)}>
         <div className="bg-[#1A1A1A] rounded-t-3xl border-t border-hairline shadow-elevated overflow-hidden">
           {/* Countdown progress bar */}
           <div className="relative h-1 w-full bg-secondary overflow-hidden">
@@ -199,6 +199,7 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
                 className="w-full rounded-2xl h-14 text-base font-semibold bg-white text-black hover:bg-white/90 shadow-cta"
                 onClick={(e) => {
                   console.log("ACCEPT BUTTON CLICKED DIRECTLY", e);
+                  console.log("Button state:", { isLoading, secondsLeft, disabled: isLoading || secondsLeft === 0 });
                   handleAccept();
                 }}
                 disabled={isLoading || secondsLeft === 0}
@@ -212,6 +213,7 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
                 className="w-full rounded-2xl h-14 text-base font-semibold border-hairline text-muted-foreground"
                 onClick={(e) => {
                   console.log("DECLINE BUTTON CLICKED DIRECTLY", e);
+                  console.log("Button state:", { isLoading, secondsLeft, disabled: isLoading || secondsLeft === 0 });
                   handleDecline();
                 }}
                 disabled={isLoading || secondsLeft === 0}
