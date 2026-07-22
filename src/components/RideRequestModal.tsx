@@ -44,6 +44,7 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
   }, [ride.id, onDecline]);
 
   const handleAccept = async () => {
+    console.log("RideRequestModal: handleAccept CLICKED");
     if (timerRef.current) clearInterval(timerRef.current);
     setIsLoading(true);
     try {
@@ -58,6 +59,7 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
   };
 
   const handleDecline = async () => {
+    console.log("RideRequestModal: handleDecline CLICKED");
     if (timerRef.current) clearInterval(timerRef.current);
     setIsLoading(true);
     try {
@@ -195,7 +197,10 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
                 id="btn-accept-ride"
                 size="xl"
                 className="w-full rounded-2xl h-14 text-base font-semibold bg-white text-black hover:bg-white/90 shadow-cta"
-                onClick={handleAccept}
+                onClick={(e) => {
+                  console.log("ACCEPT BUTTON CLICKED DIRECTLY", e);
+                  handleAccept();
+                }}
                 disabled={isLoading || secondsLeft === 0}
               >
                 {isLoading ? "Accepting..." : "ACCEPT"}
@@ -205,7 +210,10 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
                 variant="outline"
                 size="xl"
                 className="w-full rounded-2xl h-14 text-base font-semibold border-hairline text-muted-foreground"
-                onClick={handleDecline}
+                onClick={(e) => {
+                  console.log("DECLINE BUTTON CLICKED DIRECTLY", e);
+                  handleDecline();
+                }}
                 disabled={isLoading || secondsLeft === 0}
               >
                 DECLINE
