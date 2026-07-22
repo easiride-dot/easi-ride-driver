@@ -711,11 +711,15 @@ function RequestCard({ ride, queuePosition, queueTotal, onAccept, onDecline }: {
           <span className="text-base font-bold text-primary">{initial}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-foreground">{ride.student_name || "Passenger"}</p>
+          <p className="text-sm font-semibold text-foreground">{ride.student_name || "Passenger"}</p>
+          <div className="flex items-center gap-2 mt-0.5">
             <span className="text-[10px] text-muted-foreground">#{queuePosition} of {queueTotal}</span>
+            <span className="text-[10px] text-muted-foreground">·</span>
+            <p className="text-[10px] text-muted-foreground truncate">{ride.type ? ride.type.replace(/_/g, " ") : "Ride"}</p>
           </div>
-          <p className="text-xs text-muted-foreground truncate">{ride.type ? ride.type.replace(/_/g, " ") : "Ride"}</p>
+          {ride.fare_amount != null && (
+            <p className="text-xs font-semibold text-emerald-400 mt-0.5">You'll earn: {Math.floor(ride.fare_amount * 0.8)} NLe</p>
+          )}
         </div>
         <div className={cn(
           "flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold",
@@ -735,14 +739,9 @@ function RequestCard({ ride, queuePosition, queueTotal, onAccept, onDecline }: {
           <Navigation className="h-3 w-3 text-muted-foreground shrink-0" />
           <span className="truncate text-foreground/80">{ride.destination}</span>
         </div>
-        <div className="flex items-center justify-between pl-5">
-          {ride.distance_km && (
-            <span className="text-[10px] text-muted-foreground">{ride.distance_km.toFixed(1)} km</span>
-          )}
-          {ride.fare_amount != null && (
-            <span className="text-xs font-semibold text-foreground">{ride.fare_amount} NLe</span>
-          )}
-        </div>
+        {ride.distance_km && (
+          <p className="text-[10px] text-muted-foreground pl-5">{ride.distance_km.toFixed(1)} km</p>
+        )}
       </div>
 
       {isUrgent && (
