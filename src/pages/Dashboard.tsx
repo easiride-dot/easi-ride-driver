@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { subscribeToPushNotifications, getExistingPushSubscription } from "@/lib/pushNotifications";
 
 export default function Dashboard() {
-  const { user, driver } = useAuth();
+  const { user, driver, refreshDriver } = useAuth();
   const navigate = useNavigate();
   const [isOnline, setIsOnline] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -283,6 +283,7 @@ export default function Dashboard() {
         .eq("id", driver.id);
 
       if (error) throw error;
+      await refreshDriver();
       setShowOnboarding(false);
       toast.success("Setup complete!");
     } catch {
