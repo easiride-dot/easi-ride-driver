@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Power, Wifi, WifiOff, Car, Bell, BellRing, X, TrendingUp, Smartphone, Monitor, MapPin, CheckCircle2, Loader2, Share2, Plus } from "lucide-react";
+import { Power, Wifi, WifiOff, Car, Bell, BellRing, X, TrendingUp, Smartphone, Monitor, MapPin, CheckCircle2, Loader2, Share2, Plus, Clock, Navigation, MapPin as MapPinIcon, AlertTriangle } from "lucide-react";
 import * as Drawer from "vaul";
 import { toast } from "sonner";
 import { cn, formatTime, formatNLe } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { useRideRequest } from "@/hooks/useRideRequest";
+import { useRideRequest, IncomingRide } from "@/hooks/useRideRequest";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { RideRequestModal } from "@/components/RideRequestModal";
 import { Badge } from "@/components/ui/badge";
 import { subscribeToPushNotifications, getExistingPushSubscription } from "@/lib/pushNotifications";
 
@@ -194,26 +193,24 @@ export default function Dashboard() {
     }
   };
 
-  const handleAcceptRide = useCallback(async () => {
-    if (!incomingRide) return;
-    const ok = await acceptRide(incomingRide.id, incomingRide.invitation_id, incomingRide.user_id);
+  const handleAcceptRide = useCallback(async (ride: IncomingRide) => {
+    const ok = await acceptRide(ride.id, ride.invitation_id, ride.user_id);
     if (ok) {
       toast.success("Ride accepted! Head to the pickup.");
-      navigate(`/ride/${incomingRide.id}`);
+      navigate(`/ride/${ride.id}`);
     } else {
       toast.error("Failed to accept ride.");
     }
-  }, [incomingRide, acceptRide, navigate]);
+  }, [acceptRide, navigate]);
 
-  const handleDeclineRide = useCallback(async () => {
-    if (!incomingRide) return;
-    const ok = await declineRide(incomingRide.id);
+  const handleDeclineRide = useCallback(async (ride: IncomingRide) => {
+    const ok = await declineRide(ride.id);
     if (ok) {
       toast("Ride declined.");
     } else {
       toast.error("Failed to decline ride.");
     }
-  }, [incomingRide, declineRide]);
+  }, [declineRide]);
 
   // Check push notification state
   useEffect(() => {
@@ -299,15 +296,26 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Incoming ride modal */}
-      {incomingRide && (
-        <RideRequestModal
-          ride={incomingRide}
-          onAccept={handleAcceptRide}
-          onDecline={handleDeclineRide}
-          queuePosition={1}
-          queueTotal={pendingCount}
-        />
+      {/* Incoming Requests Queue */}
+      {incomingRides.length > 0 && (
+        <div className="px-5 pt-2 mb-2">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-display text-lg font-semibold">Incoming Requests</h2>
+            <Badge variant="destructive" className="text-[10px]">{pendingCount} pending</Badge>
+          </div>
+          <div className="space-y-3">
+            {incomingRides.map((ride, idx) => (
+              <RequestCard
+                key={ride.id}
+                ride={ride}
+                queuePosition={idx + 1}
+                queueTotal={pendingCount}
+                onAccept={() => handleAcceptRide(ride)}
+                onDecline={() => handleDeclineRide(ride)}
+              />
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Header */}
@@ -522,38 +530,20 @@ export default function Dashboard() {
         )}
 
         {/* Waiting state when online */}
-        {isOnline && !incomingRide && (
+        {isOnline && incomingRides.length === 0 && (
           <div className="glass-card rounded-3xl p-6 shadow-soft text-center">
             <div className="flex flex-col items-center gap-3">
-              {pendingCount > 0 ? (
-                <>
-                  <div className="relative">
-                    <div className="h-12 w-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                      <BellRing className="h-5 w-5 text-amber-400 animate-pulse-slow" />
-                    </div>
-                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive flex items-center justify-center">
-                      <span className="text-[10px] font-bold text-white">{pendingCount}</span>
-                    </span>
-                  </div>
-                  <p className="text-sm font-medium text-foreground">
-                    {pendingCount} pending request{pendingCount !== 1 ? "s" : ""}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <div className="relative">
-                    <div className="h-12 w-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
-                      <Bell className="h-5 w-5 text-primary animate-pulse-slow" />
-                    </div>
-                  </div>
-                  <p className="text-sm font-medium text-foreground">
-                    Waiting for ride requests
-                  </p>
-                  <p className="text-xs text-muted-foreground max-w-[200px] leading-relaxed">
-                    Stay connected. New rides will appear automatically as full-screen notifications.
-                  </p>
-                </>
-              )}
+              <div className="relative">
+                <div className="h-12 w-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <Bell className="h-5 w-5 text-primary animate-pulse-slow" />
+                </div>
+              </div>
+              <p className="text-sm font-medium text-foreground">
+                Waiting for ride requests
+              </p>
+              <p className="text-xs text-muted-foreground max-w-[200px] leading-relaxed">
+                Stay connected. New requests will appear here as cards.
+              </p>
               <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 {formatTime(currentTime)}
               </p>
@@ -669,6 +659,112 @@ export default function Dashboard() {
           </Drawer.Content>
         </Drawer.Portal>
       </Drawer.Root>
+    </div>
+  );
+}
+
+function RequestCard({ ride, queuePosition, queueTotal, onAccept, onDecline }: {
+  ride: IncomingRide;
+  queuePosition: number;
+  queueTotal: number;
+  onAccept: () => void;
+  onDecline: () => void;
+}) {
+  const [countdown, setCountdown] = useState(30);
+  const [accepting, setAccepting] = useState(false);
+  const [declining, setDeclining] = useState(false);
+  const isUrgent = countdown <= 10;
+
+  useEffect(() => {
+    if (countdown <= 0) {
+      onDecline();
+      return;
+    }
+    const timer = setInterval(() => setCountdown((c) => c - 1), 1000);
+    return () => clearInterval(timer);
+  }, [countdown, onDecline]);
+
+  const initial = ride.student_name?.charAt(0)?.toUpperCase() || "P";
+
+  const handleAccept = async () => {
+    setAccepting(true);
+    await onAccept();
+    setAccepting(false);
+  };
+
+  const handleDecline = async () => {
+    setDeclining(true);
+    await onDecline();
+    setDeclining(false);
+  };
+
+  return (
+    <div className={cn(
+      "glass-card rounded-2xl p-4 border transition-all",
+      isUrgent ? "border-destructive/30 bg-destructive/5" : "border-hairline"
+    )}>
+      <div className="flex items-center gap-3 mb-3">
+        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0 border-2 border-primary/20">
+          <span className="text-base font-bold text-primary">{initial}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-foreground">{ride.student_name || "Passenger"}</p>
+            <span className="text-[10px] text-muted-foreground">#{queuePosition} of {queueTotal}</span>
+          </div>
+          <p className="text-xs text-muted-foreground truncate">{ride.type ? ride.type.replace(/_/g, " ") : "Ride"}</p>
+        </div>
+        <div className={cn(
+          "flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold",
+          isUrgent ? "bg-destructive/10 text-destructive" : "bg-secondary text-muted-foreground"
+        )}>
+          <Clock className="h-3 w-3" />
+          <span>{countdown}s</span>
+        </div>
+      </div>
+
+      <div className="space-y-1.5 mb-4">
+        <div className="flex items-center gap-2 text-xs">
+          <MapPinIcon className="h-3 w-3 text-muted-foreground shrink-0" />
+          <span className="truncate text-foreground/80">{ride.pickup}</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <Navigation className="h-3 w-3 text-muted-foreground shrink-0" />
+          <span className="truncate text-foreground/80">{ride.destination}</span>
+        </div>
+        {ride.distance_km && (
+          <p className="text-[10px] text-muted-foreground pl-5">{ride.distance_km.toFixed(1)} km</p>
+        )}
+      </div>
+
+      {isUrgent && (
+        <div className="flex items-center gap-1.5 mb-3 text-[10px] text-destructive">
+          <AlertTriangle className="h-3 w-3" />
+          <span>Expiring soon</span>
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 rounded-xl h-10 text-xs font-semibold"
+          onClick={handleDecline}
+          disabled={declining}
+        >
+          {declining ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+          Decline
+        </Button>
+        <Button
+          size="sm"
+          className="flex-1 rounded-xl h-10 text-xs font-semibold"
+          onClick={handleAccept}
+          disabled={accepting}
+        >
+          {accepting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+          Accept
+        </Button>
+      </div>
     </div>
   );
 }
