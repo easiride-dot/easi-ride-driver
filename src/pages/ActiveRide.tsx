@@ -162,7 +162,10 @@ export default function ActiveRidePage() {
       toast.error("Failed to cancel ride.");
     } else {
       navigate("/dashboard", { replace: true, state: { fromActiveRide: true } });
-    <div className="min-h-screen bg-background flex items-center justify-center gap-4">
+    }
+  };
+
+  if (loading) return (
       <Loader2 className="h-8 w-8 text-primary animate-spin" />
       <p className="text-sm text-muted-foreground uppercase tracking-widest">Loading ride...</p>
     </div>
