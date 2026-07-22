@@ -31,7 +31,7 @@ export default function Dashboard() {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
   const { startWatching, stopWatching } = useGeolocation(null);
-  const { incomingRide, acceptRide, declineRide } = useRideRequest({
+  const { incomingRide, incomingRides, pendingCount, acceptRide, declineRide } = useRideRequest({
     enabled: isOnline,
   });
 
@@ -194,30 +194,26 @@ export default function Dashboard() {
     }
   };
 
-  const handleAcceptRide = async () => {
+  const handleAcceptRide = useCallback(async () => {
     if (!incomingRide) return;
-    console.log("handleAcceptRide called with ride:", incomingRide);
-    const ok = await acceptRide(incomingRide.id, incomingRide.user_id);
-    console.log("acceptRide returned:", ok);
+    const ok = await acceptRide(incomingRide.id, incomingRide.invitation_id, incomingRide.user_id);
     if (ok) {
       toast.success("Ride accepted! Head to the pickup.");
       navigate(`/ride/${incomingRide.id}`);
     } else {
-      toast.error("Failed to accept ride. Check console for details.");
+      toast.error("Failed to accept ride.");
     }
-  };
+  }, [incomingRide, acceptRide, navigate]);
 
-  const handleDeclineRide = async () => {
+  const handleDeclineRide = useCallback(async () => {
     if (!incomingRide) return;
-    console.log("handleDeclineRide called with ride:", incomingRide);
     const ok = await declineRide(incomingRide.id);
-    console.log("declineRide returned:", ok);
     if (ok) {
       toast("Ride declined.");
     } else {
-      toast.error("Failed to decline ride. Check console for details.");
+      toast.error("Failed to decline ride.");
     }
-  };
+  }, [incomingRide, declineRide]);
 
   // Check push notification state
   useEffect(() => {
@@ -309,6 +305,8 @@ export default function Dashboard() {
           ride={incomingRide}
           onAccept={handleAcceptRide}
           onDecline={handleDeclineRide}
+          queuePosition={1}
+          queueTotal={pendingCount}
         />
       )}
 
@@ -527,17 +525,35 @@ export default function Dashboard() {
         {isOnline && !incomingRide && (
           <div className="glass-card rounded-3xl p-6 shadow-soft text-center">
             <div className="flex flex-col items-center gap-3">
-              <div className="relative">
-                <div className="h-12 w-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
-                  <Bell className="h-5 w-5 text-primary animate-pulse-slow" />
-                </div>
-              </div>
-              <p className="text-sm font-medium text-foreground">
-                Waiting for ride requests
-              </p>
-              <p className="text-xs text-muted-foreground max-w-[200px] leading-relaxed">
-                Stay connected. New rides will appear automatically as full-screen notifications.
-              </p>
+              {pendingCount > 0 ? (
+                <>
+                  <div className="relative">
+                    <div className="h-12 w-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                      <BellRing className="h-5 w-5 text-amber-400 animate-pulse-slow" />
+                    </div>
+                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive flex items-center justify-center">
+                      <span className="text-[10px] font-bold text-white">{pendingCount}</span>
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium text-foreground">
+                    {pendingCount} pending request{pendingCount !== 1 ? "s" : ""}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="relative">
+                    <div className="h-12 w-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+                      <Bell className="h-5 w-5 text-primary animate-pulse-slow" />
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium text-foreground">
+                    Waiting for ride requests
+                  </p>
+                  <p className="text-xs text-muted-foreground max-w-[200px] leading-relaxed">
+                    Stay connected. New rides will appear automatically as full-screen notifications.
+                  </p>
+                </>
+              )}
               <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 {formatTime(currentTime)}
               </p>

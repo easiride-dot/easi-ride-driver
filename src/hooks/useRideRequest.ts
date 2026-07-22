@@ -44,6 +44,7 @@ export interface IncomingRide {
   status: string;
   student_name?: string;
   invitation_id?: string;
+  type?: string;
 }
 
 interface UseRideRequestOptions {
@@ -52,21 +53,41 @@ interface UseRideRequestOptions {
 
 export function useRideRequest({ enabled }: UseRideRequestOptions) {
   const { user, driver } = useAuth();
-  const [incomingRide, setIncomingRide] = useState<IncomingRide | null>(null);
+  const [incomingRides, setIncomingRides] = useState<IncomingRide[]>([]);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const checkPendingRef = useRef<(() => void) | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const clearIncoming = useCallback(() => setIncomingRide(null), []);
+  const incomingRide = incomingRides.length > 0 ? incomingRides[0] : null;
+  const pendingCount = incomingRides.length;
 
-  // Play sound + vibrate on new incoming ride
+  const removeRideFromQueue = useCallback((rideId: string) => {
+    setIncomingRides((prev) => prev.filter((r) => r.id !== rideId));
+  }, []);
+
+  const clearIncoming = useCallback(() => {
+    setIncomingRides([]);
+  }, []);
+
+  // Play sound + vibrate when a new ride arrives (not on re-renders)
+  const prevCountRef = useRef(0);
   useEffect(() => {
-    if (incomingRide) {
+    if (incomingRides.length > prevCountRef.current) {
       playNotificationSound();
       if (navigator.vibrate) {
         navigator.vibrate([200, 100, 200]);
       }
     }
-  }, [incomingRide]);
+    prevCountRef.current = incomingRides.length;
+  }, [incomingRides.length]);
+
+  const acknowledgeInvitation = useCallback(async (invitationId: string) => {
+    try {
+      await supabase.rpc("acknowledge_invitation", { p_invitation_id: invitationId });
+    } catch {
+      // silent — best-effort acknowledgement
+    }
+  }, []);
 
   useEffect(() => {
     if (!enabled || !user) {
@@ -74,98 +95,120 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
-      setIncomingRide(null);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      setIncomingRides([]);
       return;
     }
 
     const handleNewInvitation = async (payload: { new: Record<string, unknown> }) => {
-      const inv = payload.new;
-      if (inv.status !== "pending") return;
-      if (inv.driver_id !== user.id) return;
+      try {
+        const inv = payload.new;
+        if (inv.status !== "pending") return;
+        if (inv.driver_id !== user.id) return;
 
-      const rideId = inv.ride_id as string;
+        const rideId = inv.ride_id as string;
 
-      // Fetch ride details
-      const { data: ride } = await supabase
-        .from("rides")
-        .select("*")
-        .eq("id", rideId)
-        .maybeSingle();
-
-      if (!ride) return;
-
-      let studentName = "Passenger";
-      if (ride.user_id) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("id", ride.user_id)
+        const { data: ride } = await supabase
+          .from("rides")
+          .select("*")
+          .eq("id", rideId)
           .maybeSingle();
-        if (profile?.full_name) {
-          studentName = profile.full_name.split(" ")[0];
-        }
-      }
 
-      setIncomingRide({
-        id: ride.id,
-        pickup: ride.pickup,
-        destination: ride.destination,
-        pickup_latitude: ride.pickup_latitude,
-        pickup_longitude: ride.pickup_longitude,
-        destination_latitude: ride.destination_latitude,
-        destination_longitude: ride.destination_longitude,
-        distance_km: ride.distance_km,
-        fare_amount: ride.fare_amount,
-        user_id: ride.user_id,
-        status: ride.status,
-        student_name: studentName,
-        invitation_id: inv.id as string,
-      });
+        if (!ride) return;
+
+        let studentName = "Passenger";
+        if (ride.user_id) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", ride.user_id)
+            .maybeSingle();
+          if (profile?.full_name) {
+            studentName = profile.full_name.split(" ")[0];
+          }
+        }
+
+        const newRide: IncomingRide = {
+          id: ride.id,
+          pickup: ride.pickup,
+          destination: ride.destination,
+          pickup_latitude: ride.pickup_latitude,
+          pickup_longitude: ride.pickup_longitude,
+          destination_latitude: ride.destination_latitude,
+          destination_longitude: ride.destination_longitude,
+          distance_km: ride.distance_km,
+          fare_amount: ride.fare_amount,
+          user_id: ride.user_id,
+          status: ride.status,
+          student_name: studentName,
+          invitation_id: inv.id as string,
+          type: ride.type,
+        };
+
+        setIncomingRides((prev) => {
+          if (prev.some((r) => r.id === newRide.id)) return prev;
+          return [...prev, newRide];
+        });
+
+        acknowledgeInvitation(inv.id as string);
+      } catch (err) {
+        console.error("handleNewInvitation error:", err);
+      }
     };
 
     const checkForPending = async () => {
       try {
         const { data: pendingInvites } = await supabase
           .from("ride_invitations")
-          .select("ride_id")
+          .select("ride_id, id")
           .eq("driver_id", user.id)
           .eq("status", "pending")
-          .limit(1);
+          .order("created_at", { ascending: false });
 
         if (pendingInvites && pendingInvites.length > 0) {
-          const rideId = pendingInvites[0].ride_id;
-          const { data: ride } = await supabase
-            .from("rides")
-            .select("*")
-            .eq("id", rideId)
-            .maybeSingle();
+          for (const invite of pendingInvites) {
+            const { data: ride } = await supabase
+              .from("rides")
+              .select("*")
+              .eq("id", invite.ride_id)
+              .maybeSingle();
 
-          if (ride) {
-            let studentName = "Passenger";
-            if (ride.user_id) {
-              const { data: profile } = await supabase
-                .from("profiles")
-                .select("full_name")
-                .eq("id", ride.user_id)
-                .maybeSingle();
-              if (profile?.full_name) {
-                studentName = profile.full_name.split(" ")[0];
+            if (ride) {
+              let studentName = "Passenger";
+              if (ride.user_id) {
+                const { data: profile } = await supabase
+                  .from("profiles")
+                  .select("full_name")
+                  .eq("id", ride.user_id)
+                  .maybeSingle();
+                if (profile?.full_name) {
+                  studentName = profile.full_name.split(" ")[0];
+                }
               }
+
+              setIncomingRides((prev) => {
+                if (prev.some((r) => r.id === ride.id)) return prev;
+                return [...prev, {
+                  id: ride.id,
+                  pickup: ride.pickup,
+                  destination: ride.destination,
+                  pickup_latitude: ride.pickup_latitude,
+                  pickup_longitude: ride.pickup_longitude,
+                  destination_latitude: ride.destination_latitude,
+                  destination_longitude: ride.destination_longitude,
+                  distance_km: ride.distance_km,
+                  fare_amount: ride.fare_amount,
+                  user_id: ride.user_id,
+                  status: ride.status,
+                  student_name: studentName,
+                  invitation_id: invite.id,
+                  type: ride.type,
+                }];
+              });
             }
-            setIncomingRide({
-              id: ride.id,
-              pickup: ride.pickup,
-              destination: ride.destination,
-              pickup_latitude: ride.pickup_latitude,
-              pickup_longitude: ride.pickup_longitude,
-              destination_latitude: ride.destination_latitude,
-              destination_longitude: ride.destination_longitude,
-              distance_km: ride.distance_km,
-              fare_amount: ride.fare_amount,
-              user_id: ride.user_id,
-              status: ride.status,
-              student_name: studentName,
-            });
           }
         }
       } catch {
@@ -176,7 +219,6 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
     checkPendingRef.current = checkForPending;
     checkForPending();
 
-    // Listen for INSERT on ride_invitations for this driver
     const channel = supabase
       .channel(`ride-invitations-${user.id}`)
       .on(
@@ -191,48 +233,67 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
           handleNewInvitation(payload as { new: Record<string, unknown> });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          // Auto-reconnect after 3 seconds
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+          }
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (channelRef.current) {
+              supabase.removeChannel(channelRef.current);
+            }
+            channelRef.current = null;
+            if (checkPendingRef.current) {
+              checkPendingRef.current();
+            }
+          }, 3000);
+        }
+      });
 
     channelRef.current = channel;
 
     return () => {
       supabase.removeChannel(channel);
       channelRef.current = null;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
     };
-  }, [enabled, user]);
+  }, [enabled, user, acknowledgeInvitation]);
 
   const acceptRide = useCallback(
-    async (rideId: string, studentUserId?: string) => {
+    async (rideId: string, invitationId?: string, studentUserId?: string) => {
       if (!user) return false;
 
-      // Get auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
       try {
-        const apiBase = import.meta.env.VITE_API_URL || "";
-        console.log("Accepting ride:", { rideId, apiBase, hasToken: !!token });
-        
-        const response = await fetch(`${apiBase}/api/dispatch`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ type: "accept", rideId }),
+        const { data, error } = await supabase.rpc("accept_ride", {
+          p_ride_id: rideId,
+          p_driver_id: user.id,
         });
 
-        const result = await response.json();
-        console.log("Accept ride response:", result);
+        if (error) {
+          console.error("Accept ride RPC error:", error);
+          return false;
+        }
+
+        const result = data as {
+          success: boolean;
+          reason?: string;
+          driver_name?: string;
+          driver_phone?: string;
+          vehicle?: string;
+        };
 
         if (!result.success) {
           console.error("Accept ride failed:", result.reason);
           return false;
         }
 
-        clearIncoming();
+        removeRideFromQueue(rideId);
 
-        // Send push to student from the client as well (backup)
+        // Send push to student from the client as backup
         if (studentUserId && driver) {
           try {
             await fetch(
@@ -252,8 +313,8 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
                 }),
               }
             );
-          } catch (err) {
-            console.error("Push notification failed:", err);
+          } catch {
+            // best-effort
           }
         }
 
@@ -264,46 +325,42 @@ export function useRideRequest({ enabled }: UseRideRequestOptions) {
         return false;
       }
     },
-    [clearIncoming, driver, user]
+    [removeRideFromQueue, driver, user]
   );
 
   const declineRide = useCallback(
     async (rideId: string) => {
       if (!user) return false;
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
       try {
-        const apiBase = import.meta.env.VITE_API_URL || "";
-        console.log("Declining ride:", { rideId, apiBase, hasToken: !!token });
-        
-        const response = await fetch(`${apiBase}/api/dispatch`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ type: "decline", rideId }),
+        const { data, error } = await supabase.rpc("decline_ride_invitation", {
+          p_ride_id: rideId,
+          p_driver_id: user.id,
         });
 
-        const result = await response.json();
-        console.log("Decline ride response:", result);
-        
+        if (error) {
+          console.error("Decline ride RPC error:", error);
+          return false;
+        }
+
+        const result = data as { success: boolean; reason?: string };
+
         if (result.success) {
-          clearIncoming();
+          removeRideFromQueue(rideId);
           return true;
         } else {
           console.error("Decline ride failed:", result.reason);
+          removeRideFromQueue(rideId);
+          return false;
         }
       } catch (err) {
         console.error("Decline ride error:", err);
+        removeRideFromQueue(rideId);
+        return false;
       }
-
-      return false;
     },
-    [clearIncoming, user]
+    [removeRideFromQueue, user]
   );
 
-  return { incomingRide, clearIncoming, acceptRide, declineRide };
+  return { incomingRide, incomingRides, pendingCount, clearIncoming, acceptRide, declineRide };
 }

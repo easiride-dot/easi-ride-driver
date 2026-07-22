@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MapPin, Navigation, Clock, DollarSign, User } from "lucide-react";
+import { MapPin, Navigation, Clock, DollarSign, User, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn, formatNLe } from "@/lib/utils";
@@ -11,16 +11,17 @@ interface RideRequestModalProps {
   ride: IncomingRide;
   onAccept: () => Promise<void>;
   onDecline: () => Promise<void>;
+  queuePosition?: number;
+  queueTotal?: number;
 }
 
-export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModalProps) {
+export function RideRequestModal({ ride, onAccept, onDecline, queuePosition = 1, queueTotal = 1 }: RideRequestModalProps) {
   const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECONDS);
   const [isLoading, setIsLoading] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoDeclinedRef = useRef(false);
 
   useEffect(() => {
-    // Reset on new ride
     setSecondsLeft(COUNTDOWN_SECONDS);
     autoDeclinedRef.current = false;
 
@@ -41,33 +42,27 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [ride.id, onDecline]);
+  }, [ride.id, ride.invitation_id, onDecline]);
 
   const handleAccept = async () => {
-    console.log("RideRequestModal: handleAccept CLICKED");
     if (timerRef.current) clearInterval(timerRef.current);
     setIsLoading(true);
     try {
-      console.log("RideRequestModal: Calling onAccept");
       await onAccept();
-      console.log("RideRequestModal: onAccept completed");
-    } catch (err) {
-      console.error("RideRequestModal: onAccept error:", err);
+    } catch {
+      // handled by parent
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDecline = async () => {
-    console.log("RideRequestModal: handleDecline CLICKED");
     if (timerRef.current) clearInterval(timerRef.current);
     setIsLoading(true);
     try {
-      console.log("RideRequestModal: Calling onDecline");
       await onDecline();
-      console.log("RideRequestModal: onDecline completed");
-    } catch (err) {
-      console.error("RideRequestModal: onDecline error:", err);
+    } catch {
+      // handled by parent
     } finally {
       setIsLoading(false);
     }
@@ -77,14 +72,11 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
   const isUrgent = secondsLeft <= 10;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col" onClick={(e) => console.log("Overlay clicked", e)}>
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-[9999] flex flex-col">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
-      {/* Modal — slides up from bottom */}
-      <div className="absolute bottom-0 left-0 right-0 animate-fade-up" onClick={(e) => console.log("Modal container clicked", e)}>
+      <div className="absolute bottom-0 left-0 right-0 animate-fade-up">
         <div className="bg-[#1A1A1A] rounded-t-3xl border-t border-hairline shadow-elevated overflow-hidden">
-          {/* Countdown progress bar */}
           <div className="relative h-1 w-full bg-secondary overflow-hidden">
             <div
               className={cn(
@@ -96,42 +88,55 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
           </div>
 
           <div className="px-6 pt-5 pb-8">
-            {/* Header */}
+            {/* Header with queue indicator */}
             <div className="flex items-center justify-between mb-5">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-1">
-                  New Ride Request
-                </p>
-                <h2 className="text-2xl font-display font-bold text-foreground">
-                  {ride.student_name}
-                </h2>
+              <div className="flex items-center gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-1">
+                    New Ride Request
+                  </p>
+                  <h2 className="text-2xl font-display font-bold text-foreground">
+                    {ride.student_name}
+                  </h2>
+                  {ride.type && (
+                    <span className="text-[10px] uppercase tracking-wider text-primary/80 mt-1 block">
+                      {ride.type} ride
+                    </span>
+                  )}
+                </div>
               </div>
-              {/* Countdown */}
-              <div
-                className={cn(
-                  "flex h-14 w-14 flex-col items-center justify-center rounded-2xl border transition-colors duration-300",
-                  isUrgent
-                    ? "border-destructive/50 bg-destructive/10"
-                    : "border-hairline bg-secondary"
+              <div className="flex items-center gap-3">
+                {queueTotal > 1 && (
+                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <List className="h-3 w-3" />
+                    <span>{queuePosition}/{queueTotal}</span>
+                  </div>
                 )}
-              >
-                <span
+                <div
                   className={cn(
-                    "text-2xl font-bold font-display tabular-nums leading-none",
-                    isUrgent ? "text-destructive" : "text-foreground"
+                    "flex h-14 w-14 flex-col items-center justify-center rounded-2xl border transition-colors duration-300",
+                    isUrgent
+                      ? "border-destructive/50 bg-destructive/10"
+                      : "border-hairline bg-secondary"
                   )}
                 >
-                  {secondsLeft}
-                </span>
-                <span className="text-[8px] uppercase tracking-widest text-muted-foreground">
-                  sec
-                </span>
+                  <span
+                    className={cn(
+                      "text-2xl font-bold font-display tabular-nums leading-none",
+                      isUrgent ? "text-destructive" : "text-foreground"
+                    )}
+                  >
+                    {secondsLeft}
+                  </span>
+                  <span className="text-[8px] uppercase tracking-widest text-muted-foreground">
+                    sec
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Ride details */}
             <div className="space-y-3 mb-5">
-              {/* Pickup */}
               <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-background border border-hairline">
                 <div className="mt-0.5 h-7 w-7 flex-shrink-0 rounded-full bg-emerald-500/20 flex items-center justify-center">
                   <MapPin className="h-3.5 w-3.5 text-emerald-400" />
@@ -146,7 +151,6 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
                 </div>
               </div>
 
-              {/* Destination */}
               <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-background border border-hairline">
                 <div className="mt-0.5 h-7 w-7 flex-shrink-0 rounded-full bg-red-500/20 flex items-center justify-center">
                   <Navigation className="h-3.5 w-3.5 text-red-400" />
@@ -196,11 +200,7 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
                 id="btn-accept-ride"
                 size="xl"
                 className="w-full rounded-2xl h-14 text-base font-semibold bg-white text-black hover:bg-white/90 shadow-cta"
-                onClick={(e) => {
-                  console.log("ACCEPT BUTTON CLICKED DIRECTLY", e);
-                  console.log("Button state:", { isLoading, secondsLeft, disabled: isLoading || secondsLeft === 0 });
-                  handleAccept();
-                }}
+                onClick={handleAccept}
                 disabled={isLoading || secondsLeft === 0}
               >
                 {isLoading ? "Accepting..." : "ACCEPT"}
@@ -210,11 +210,7 @@ export function RideRequestModal({ ride, onAccept, onDecline }: RideRequestModal
                 variant="outline"
                 size="xl"
                 className="w-full rounded-2xl h-14 text-base font-semibold border-hairline text-muted-foreground"
-                onClick={(e) => {
-                  console.log("DECLINE BUTTON CLICKED DIRECTLY", e);
-                  console.log("Button state:", { isLoading, secondsLeft, disabled: isLoading || secondsLeft === 0 });
-                  handleDecline();
-                }}
+                onClick={handleDecline}
                 disabled={isLoading || secondsLeft === 0}
               >
                 DECLINE
