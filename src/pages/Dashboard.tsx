@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Power, Wifi, WifiOff, Car, Bell, X, TrendingUp, Smartphone, Monitor, MapPin, CheckCircle2, Loader2, Share2, Plus, Clock, Navigation, AlertTriangle } from "lucide-react";
+import { Power, Wifi, WifiOff, Car, Bell, X, TrendingUp, Smartphone, Monitor, MapPin, CheckCircle2, Loader2, Share2, Plus, Clock, Navigation, AlertTriangle, RefreshCw } from "lucide-react";
 import * as Drawer from "vaul";
 import { toast } from "sonner";
 import { cn, formatTime, formatNLe } from "@/lib/utils";
@@ -366,6 +366,9 @@ export default function Dashboard() {
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
               </span>
             )}
+            <button onClick={() => window.location.reload()} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-hairline bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground transition" title="Refresh">
+              <RefreshCw className="h-4 w-4" />
+            </button>
             <div
               className={cn(
                 "flex h-10 w-10 items-center justify-center rounded-2xl border transition-colors",
