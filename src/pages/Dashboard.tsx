@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Power, Wifi, WifiOff, Car, Bell, X, TrendingUp, Smartphone, Monitor, MapPin, CheckCircle2, Loader2, Share2, Plus, Clock, Navigation, AlertTriangle, RefreshCw } from "lucide-react";
+import { Power, Wifi, WifiOff, Car, Bell, X, TrendingUp, Smartphone, Monitor, MapPin, CheckCircle2, Loader2, Share2, Plus, Clock, Navigation, RefreshCw } from "lucide-react";
 import * as Drawer from "vaul";
 import { toast } from "sonner";
 import { cn, formatTime, formatNLe } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { useRideRequest, IncomingRide } from "@/hooks/useRideRequest";
+import { useRideRequest } from "@/hooks/useRideRequest";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ export default function Dashboard() {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
   const { startWatching, stopWatching } = useGeolocation(null);
-  const { incomingRide, incomingRides, pendingCount, acceptRide, declineRide } = useRideRequest({
+  const { incomingRides } = useRideRequest({
     enabled: isOnline,
   });
 
@@ -220,24 +220,14 @@ export default function Dashboard() {
     }
   };
 
-  const handleAcceptRide = useCallback(async (ride: IncomingRide) => {
-    const ok = await acceptRide(ride.id, ride.invitation_id, ride.user_id);
-    if (ok) {
-      toast.success("Ride accepted! Head to the pickup.");
-      navigate(`/ride/${ride.id}`);
-    } else {
-      toast.error("Failed to accept ride.");
+  // Auto-navigate to ride request page when a new request comes in
+  const prevRideCountRef = useRef(0);
+  useEffect(() => {
+    if (incomingRides.length > prevRideCountRef.current && incomingRides.length > 0) {
+      navigate("/ride-request", { state: { ride: incomingRides[0] } });
     }
-  }, [acceptRide, navigate]);
-
-  const handleDeclineRide = useCallback(async (ride: IncomingRide) => {
-    const ok = await declineRide(ride.id);
-    if (ok) {
-      toast("Ride declined.");
-    } else {
-      toast.error("Failed to decline ride.");
-    }
-  }, [declineRide]);
+    prevRideCountRef.current = incomingRides.length;
+  }, [incomingRides.length, navigate]);
 
   // Check push notification state
   useEffect(() => {
@@ -325,28 +315,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Incoming Requests Queue */}
-      {incomingRides.length > 0 && (
-        <div className="px-5 pt-2 mb-2">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-display text-lg font-semibold">Incoming Requests</h2>
-            <Badge variant="destructive" className="text-[10px]">{pendingCount} pending</Badge>
-          </div>
-          <div className="space-y-3">
-            {incomingRides.map((ride, idx) => (
-              <RequestCard
-                key={ride.id}
-                ride={ride}
-                queuePosition={idx + 1}
-                queueTotal={pendingCount}
-                onAccept={() => handleAcceptRide(ride)}
-                onDecline={() => handleDeclineRide(ride)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="px-5 pt-14 pb-6">
         <div className="flex items-center justify-between">
@@ -722,112 +690,4 @@ export default function Dashboard() {
   );
 }
 
-function RequestCard({ ride, queuePosition, queueTotal, onAccept, onDecline }: {
-  ride: IncomingRide;
-  queuePosition: number;
-  queueTotal: number;
-  onAccept: () => void;
-  onDecline: () => void;
-}) {
-  const [countdown, setCountdown] = useState(30);
-  const [accepting, setAccepting] = useState(false);
-  const [declining, setDeclining] = useState(false);
-  const isUrgent = countdown <= 10;
 
-  useEffect(() => {
-    if (countdown <= 0) {
-      onDecline();
-      return;
-    }
-    const timer = setInterval(() => setCountdown((c) => c - 1), 1000);
-    return () => clearInterval(timer);
-  }, [countdown, onDecline]);
-
-  const initial = ride.student_name?.charAt(0)?.toUpperCase() || "P";
-
-  const handleAccept = async () => {
-    setAccepting(true);
-    await onAccept();
-    setAccepting(false);
-  };
-
-  const handleDecline = async () => {
-    setDeclining(true);
-    await onDecline();
-    setDeclining(false);
-  };
-
-  return (
-    <div className={cn(
-      "glass-card rounded-2xl p-4 border transition-all",
-      isUrgent ? "border-destructive/30 bg-destructive/5" : "border-hairline"
-    )}>
-      <div className="flex items-center gap-3 mb-3">
-        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0 border-2 border-primary/20">
-          <span className="text-base font-bold text-primary">{initial}</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground">{ride.student_name || "Passenger"}</p>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[10px] text-muted-foreground">#{queuePosition} of {queueTotal}</span>
-            <span className="text-[10px] text-muted-foreground">·</span>
-            <p className="text-[10px] text-muted-foreground truncate">{ride.type ? ride.type.replace(/_/g, " ") : "Ride"}</p>
-          </div>
-          {ride.fare_amount != null && (
-            <p className="text-xs font-semibold text-emerald-400 mt-0.5">You'll earn: {formatNLe(Math.floor(ride.fare_amount * 0.8))}</p>
-          )}
-        </div>
-        <div className={cn(
-          "flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold",
-          isUrgent ? "bg-destructive/10 text-destructive" : "bg-secondary text-muted-foreground"
-        )}>
-          <Clock className="h-3 w-3" />
-          <span>{countdown}s</span>
-        </div>
-      </div>
-
-      <div className="space-y-1.5 mb-4">
-        <div className="flex items-center gap-2 text-xs">
-          <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
-          <span className="truncate text-foreground/80">{ride.pickup}</span>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <Navigation className="h-3 w-3 text-muted-foreground shrink-0" />
-          <span className="truncate text-foreground/80">{ride.destination}</span>
-        </div>
-        {ride.distance_km && (
-          <p className="text-[10px] text-muted-foreground pl-5">{ride.distance_km.toFixed(1)} km</p>
-        )}
-      </div>
-
-      {isUrgent && (
-        <div className="flex items-center gap-1.5 mb-3 text-[10px] text-destructive">
-          <AlertTriangle className="h-3 w-3" />
-          <span>Expiring soon</span>
-        </div>
-      )}
-
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          className="flex-1 rounded-xl h-10 text-xs font-semibold"
-          onClick={handleDecline}
-          disabled={declining}
-        >
-          {declining ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-          Decline
-        </Button>
-        <Button
-          size="sm"
-          className="flex-1 rounded-xl h-10 text-xs font-semibold"
-          onClick={handleAccept}
-          disabled={accepting}
-        >
-          {accepting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-          Accept
-        </Button>
-      </div>
-    </div>
-  );
-}

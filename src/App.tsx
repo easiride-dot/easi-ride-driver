@@ -7,6 +7,7 @@ import { SonnerToaster } from "@/components/ui/sonner";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import ActiveRide from "./pages/ActiveRide";
+import RideRequest from "./pages/RideRequest";
 import History from "./pages/History";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="/history" element={<History />} />
               <Route path="/profile" element={<Profile />} />
             </Route>
+            <Route path="/ride-request" element={<RideRequest />} />
             <Route path="/ride/:id" element={<ActiveRide />} />
           </Route>
           
