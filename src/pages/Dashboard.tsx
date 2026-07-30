@@ -71,7 +71,7 @@ export default function Dashboard() {
       .from("rides")
       .select("id, pickup, destination, status, updated_at")
       .eq("driver_id", driver.id)
-      .in("status", ["driver_assigned", "driver_arrived", "in_progress"])
+        .in("status", ["driver_assigned", "driver_arrived", "in_progress", "paid_and_dispatched"])
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle()
