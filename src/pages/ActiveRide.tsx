@@ -202,13 +202,13 @@ export default function ActiveRidePage() {
           <Drawer.Overlay className="fixed inset-0 bg-black/40" />
           <Drawer.Content
             ref={drawerRef}
-            className="fixed bottom-0 left-0 right-0 z-30 flex flex-col rounded-t-3xl bg-[#1A1A1A] border-t border-hairline outline-none max-h-[85dvh] overflow-y-auto"
+            className="fixed bottom-0 left-0 right-0 z-30 flex flex-col rounded-t-3xl bg-[#1A1A1A] border-t border-hairline outline-none max-h-[85dvh]"
             style={{ boxShadow: "0 -8px 30px rgba(0,0,0,0.3)" }}
           >
             {/* Drag handle */}
             <div className="mx-auto mt-3 mb-2 h-1.5 w-12 rounded-full bg-border flex-shrink-0" />
 
-            <div className="px-5 pb-8 space-y-4">
+            <div className="px-5 pb-8 space-y-4 flex-1 min-h-0 overflow-y-auto overscroll-contain">
               {/* Fare / Payment card */}
               {!isCompleted && (
                 <div className="rounded-2xl bg-background border border-hairline p-4">

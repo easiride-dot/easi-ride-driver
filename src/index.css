@@ -111,6 +111,7 @@
     background-image: var(--gradient-glow);
     background-attachment: fixed;
     transition: background-color 0.3s ease, color 0.3s ease;
+    padding-top: env(safe-area-inset-top);
   }
 
   ::selection {
