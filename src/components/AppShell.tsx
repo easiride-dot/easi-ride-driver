@@ -1,14 +1,20 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { LayoutDashboard, Clock, User } from "lucide-react";
+import { LayoutDashboard, Clock, User, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRideRequest } from "@/hooks/useRideRequest";
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/ride-request", icon: Bell, label: "Requests" },
   { to: "/history", icon: Clock, label: "History" },
   { to: "/profile", icon: User, label: "Profile" },
 ];
 
 export function AppShell() {
+  const { incomingRides } = useRideRequest({ enabled: true });
+
+  const pendingCount = incomingRides.length;
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Page content */}
@@ -26,7 +32,7 @@ export function AppShell() {
                 id={`nav-${label.toLowerCase()}`}
                 className={({ isActive }) =>
                   cn(
-                    "flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-200",
+                    "flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-200 relative",
                     isActive
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -37,7 +43,7 @@ export function AppShell() {
                   <>
                     <div
                       className={cn(
-                        "p-1.5 rounded-lg transition-all duration-200",
+                        "p-1.5 rounded-lg transition-all duration-200 relative",
                         isActive ? "bg-primary/10" : "bg-transparent"
                       )}
                     >
@@ -47,6 +53,11 @@ export function AppShell() {
                           isActive ? "text-primary stroke-[2.5px]" : "stroke-[1.5px]"
                         )}
                       />
+                      {label === "Requests" && pendingCount > 0 && (
+                        <span className="absolute -top-1 -right-1 flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-primary text-[8px] font-bold text-primary-foreground leading-none">
+                          {pendingCount > 9 ? "9+" : pendingCount}
+                        </span>
+                      )}
                     </div>
                     <span
                       className={cn(

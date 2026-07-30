@@ -220,14 +220,7 @@ export default function Dashboard() {
     }
   };
 
-  // Auto-navigate to ride request page when a new request comes in
-  const prevRideCountRef = useRef(0);
-  useEffect(() => {
-    if (incomingRides.length > prevRideCountRef.current && incomingRides.length > 0) {
-      navigate("/ride-request", { state: { rides: incomingRides } });
-    }
-    prevRideCountRef.current = incomingRides.length;
-  }, [incomingRides.length, navigate]);
+
 
   // Check push notification state
   useEffect(() => {

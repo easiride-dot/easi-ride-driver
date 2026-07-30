@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Bell, Calendar, MapPin, Clock, Check, X, Loader2, Navigation, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { useRideRequest } from "@/hooks/useRideRequest";
 import { Button } from "@/components/ui/button";
 import { cn, formatNLe } from "@/lib/utils";
 import type { IncomingRide } from "@/hooks/useRideRequest";
@@ -44,16 +45,16 @@ function RideCard({ ride, onAccept, onDecline, queuePosition, queueTotal }: {
   useEffect(() => {
     setSecondsLeft(COUNTDOWN_SECONDS);
     autoDeclinedRef.current = false;
-    const timer = setInterval(() => {
+    const interval = setInterval(() => {
       setSecondsLeft((prev) => {
-        if (prev <= 1) { clearInterval(timer); return 0; }
+        if (prev <= 1) { clearInterval(interval); return 0; }
         return prev - 1;
       });
     }, 1000);
-    const autoDecline = setTimeout(() => {
+    const timeout = setTimeout(() => {
       if (!autoDeclinedRef.current) { autoDeclinedRef.current = true; onDecline(); }
     }, COUNTDOWN_SECONDS * 1000);
-    return () => { clearInterval(timer); clearTimeout(autoDecline); };
+    return () => { clearInterval(interval); clearTimeout(timeout); };
   }, [ride.id, ride.invitation_id, onDecline]);
 
   const handleAccept = async () => { setAccepting(true); await onAccept(); setAccepting(false); };
@@ -138,13 +139,11 @@ function WeeklyCard({ req, onAccept, onDecline, acceptingId }: {
 
 export default function RideRequestPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user, driver } = useAuth();
+  const { incomingRides } = useRideRequest({ enabled: true });
   const [weeklyRequests, setWeeklyRequests] = useState<WeeklyRequest[]>(MOCK_WEEKLY);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
-
-  const rides = (location.state as { rides?: IncomingRide[] })?.rides || [];
-  const [activeTab, setActiveTab] = useState<Tab>(rides.length > 0 ? "rides" : "weekly");
+  const [activeTab, setActiveTab] = useState<Tab>(incomingRides.length > 0 ? "rides" : "weekly");
 
   if (!user) {
     navigate("/dashboard", { replace: true });
@@ -169,7 +168,6 @@ export default function RideRequestPage() {
   const handleDecline = async (ride: IncomingRide) => {
     const { error } = await supabase.rpc("decline_ride_invitation", { p_ride_id: ride.id, p_driver_id: user.id });
     if (error) { toast.error(error.message); return; }
-    navigate("/dashboard", { replace: true });
   };
 
   const handleAcceptWeekly = (id: string) => {
@@ -193,7 +191,7 @@ export default function RideRequestPage() {
       <div className="flex-shrink-0 px-5 pt-4 pb-0">
         <div className="flex items-center gap-1 p-1 rounded-2xl bg-secondary border border-hairline">
           <button onClick={() => setActiveTab("rides")} className={cn("flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all", activeTab === "rides" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-            <Bell className="h-4 w-4" /> Ride Requests {rides.length > 0 && <span className="flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{rides.length}</span>}
+            <Bell className="h-4 w-4" /> Ride Requests {incomingRides.length > 0 && <span className="flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{incomingRides.length}</span>}
           </button>
           <button onClick={() => setActiveTab("weekly")} className={cn("flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all", activeTab === "weekly" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
             <Calendar className="h-4 w-4" /> Weekly Subs {pendingWeekly.length > 0 && <span className="flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{pendingWeekly.length}</span>}
@@ -202,10 +200,10 @@ export default function RideRequestPage() {
       </div>
       <div className="flex-1 overflow-y-auto px-5 pt-4 pb-4 space-y-3">
         {activeTab === "rides" && (
-          rides.length === 0 ? (
+          incomingRides.length === 0 ? (
             <div className="glass-card rounded-3xl p-8 text-center mt-8"><Bell className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" /><p className="text-sm text-muted-foreground">No ride requests at the moment.</p></div>
           ) : (
-            rides.map((ride, idx) => <RideCard key={ride.id} ride={ride} queuePosition={idx + 1} queueTotal={rides.length} onAccept={() => handleAccept(ride)} onDecline={() => handleDecline(ride)} />)
+            incomingRides.map((ride, idx) => <RideCard key={ride.id} ride={ride} queuePosition={idx + 1} queueTotal={incomingRides.length} onAccept={() => handleAccept(ride)} onDecline={() => handleDecline(ride)} />)
           )
         )}
         {activeTab === "weekly" && (
