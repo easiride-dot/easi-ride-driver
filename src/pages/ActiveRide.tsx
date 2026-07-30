@@ -111,9 +111,13 @@ export default function ActiveRidePage() {
   };
 
   const handleStatusChange = async (newStatus: string) => {
-    if (!id) return;
+    if (!id || !driver) return;
     setStatusLoading(true);
-    const { error } = await supabase.from("rides").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", id);
+    const { error } = await supabase.rpc("update_ride_status", {
+      p_ride_id: id,
+      p_driver_id: driver.id,
+      p_new_status: newStatus,
+    });
     setStatusLoading(false);
     if (error) {
       console.error("Failed to update ride status:", error);

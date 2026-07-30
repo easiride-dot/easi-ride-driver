@@ -14,11 +14,18 @@ ALTER TABLE rides
   ADD COLUMN IF NOT EXISTS driver_id uuid REFERENCES drivers(id) ON DELETE SET NULL;
 
 -- 2. Allow assigned driver to see their rides (needed for realtime subscription)
+-- Also allow driver to see rides they have a pending invitation for
 DROP POLICY IF EXISTS "Driver reads assigned rides" ON rides;
 CREATE POLICY "Driver reads assigned rides"
   ON rides FOR SELECT
   USING (
     driver_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM ride_invitations
+      WHERE ride_invitations.ride_id = rides.id
+        AND ride_invitations.driver_id = auth.uid()
+        AND ride_invitations.status = 'pending'
+    )
   );
 
 -- 3. Allow the ride's student (user_id) to read their assigned driver's location
@@ -65,6 +72,7 @@ CREATE POLICY "Driver can update assigned rides"
   WITH CHECK (true);
 
 -- 6. Allow driver to read the name of students assigned to them
+-- Also allow reading profile for pending invitations (before driver accepts)
 DROP POLICY IF EXISTS "Driver reads assigned student profile" ON profiles;
 CREATE POLICY "Driver reads assigned student profile"
   ON profiles FOR SELECT
@@ -73,6 +81,13 @@ CREATE POLICY "Driver reads assigned student profile"
       SELECT 1 FROM rides
       WHERE rides.user_id = profiles.id
         AND rides.driver_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1 FROM ride_invitations ri
+      JOIN rides r ON r.id = ri.ride_id
+      WHERE r.user_id = profiles.id
+        AND ri.driver_id = auth.uid()
+        AND ri.status = 'pending'
     )
   );
 
