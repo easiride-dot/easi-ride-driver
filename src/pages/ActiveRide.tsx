@@ -289,7 +289,7 @@ export default function ActiveRidePage() {
               {/* Action buttons */}
               {!isCompleted && (
                 <div className="space-y-2 pt-2">
-                  {ride.status === "driver_assigned" && (
+                  {(ride.status === "driver_assigned" || ride.status === "paid_and_dispatched") && (
                     <button onClick={() => handleStatusChange("driver_arrived")} disabled={statusLoading}
                       className="w-full flex items-center justify-center gap-2 h-14 rounded-2xl bg-amber-500 hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20 disabled:opacity-50">
                       {statusLoading ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Clock className="h-5 w-5 text-white" />}
