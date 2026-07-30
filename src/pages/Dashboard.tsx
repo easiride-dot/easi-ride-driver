@@ -224,7 +224,7 @@ export default function Dashboard() {
   const prevRideCountRef = useRef(0);
   useEffect(() => {
     if (incomingRides.length > prevRideCountRef.current && incomingRides.length > 0) {
-      navigate("/ride-request", { state: { ride: incomingRides[0] } });
+      navigate("/ride-request", { state: { rides: incomingRides } });
     }
     prevRideCountRef.current = incomingRides.length;
   }, [incomingRides.length, navigate]);

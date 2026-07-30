@@ -25,10 +25,10 @@ const App = () => (
 
             <Route element={<AppShell />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/ride-request" element={<RideRequest />} />
               <Route path="/history" element={<History />} />
               <Route path="/profile" element={<Profile />} />
             </Route>
-            <Route path="/ride-request" element={<RideRequest />} />
             <Route path="/ride/:id" element={<ActiveRide />} />
           </Route>
           
