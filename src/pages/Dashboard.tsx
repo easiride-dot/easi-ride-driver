@@ -43,7 +43,7 @@ export default function Dashboard() {
     return () => clearInterval(id);
   }, []);
 
-  // Check for active session on mount
+  // Check for active session / driver status on mount
   useEffect(() => {
     if (!driver) return;
     supabase
@@ -60,6 +60,38 @@ export default function Dashboard() {
         }
       });
   }, [driver, startWatching]);
+
+  // Keep online/offline in sync across apps (mobile + PWA) via realtime
+  useEffect(() => {
+    if (!driver) return;
+    const channel = supabase
+      .channel(`driver-status-${driver.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "drivers",
+          filter: `id=eq.${driver.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as Record<string, any>;
+          if (updated.driver_status === "online") {
+            setSessionId(null);
+            setIsOnline(true);
+            startWatching();
+          } else if (updated.driver_status === "offline" || updated.driver_status === "busy") {
+            setSessionId(null);
+            setIsOnline(false);
+            stopWatching();
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [driver, startWatching, stopWatching]);
 
   // Redirect to active ride on first visit, or store for card display
   const activeRideFetchedRef = useRef(false);
@@ -181,6 +213,13 @@ export default function Dashboard() {
 
       if (error) throw error;
 
+      // Keep drivers.driver_status in sync (get_online_drivers reads this)
+      const { error: statusError } = await supabase
+        .from("drivers")
+        .update({ driver_status: "online" })
+        .eq("id", driver.id);
+      if (statusError) throw statusError;
+
       setSessionId(data.id);
       setIsOnline(true);
       startWatching();
@@ -193,13 +232,21 @@ export default function Dashboard() {
   }, [driver, startWatching]);
 
   const goOffline = useCallback(async () => {
-    if (!sessionId) return;
+    if (!driver) return;
     setToggling(true);
     try {
       await supabase
         .from("driver_sessions")
         .update({ is_active: false, ended_at: new Date().toISOString() })
-        .eq("id", sessionId);
+        .eq("driver_id", driver.id)
+        .eq("is_active", true);
+
+      // Keep drivers.driver_status in sync (get_online_drivers reads this)
+      const { error: statusError } = await supabase
+        .from("drivers")
+        .update({ driver_status: "offline" })
+        .eq("id", driver.id);
+      if (statusError) throw statusError;
 
       setSessionId(null);
       setIsOnline(false);
@@ -210,7 +257,7 @@ export default function Dashboard() {
     } finally {
       setToggling(false);
     }
-  }, [sessionId, stopWatching]);
+  }, [driver, stopWatching]);
 
   const handleToggle = () => {
     if (isOnline) {
