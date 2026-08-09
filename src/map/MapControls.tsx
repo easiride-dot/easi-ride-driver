@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { useMap } from "react-map-gl/maplibre";
+import { useMap } from "./gl";
+import { MAP_CONFIG } from "./map-style";
 import { Plus, Minus, Compass, Crosshair } from "lucide-react";
 
 export function MapControls() {
@@ -15,7 +16,7 @@ export function MapControls() {
   }, [map]);
 
   const handleResetNorth = useCallback(() => {
-    map?.easeTo({ bearing: 0, pitch: 45, duration: 500 });
+    map?.easeTo({ bearing: 0, pitch: MAP_CONFIG.defaultPitch, duration: 500 });
     setBearing(0);
   }, [map]);
 

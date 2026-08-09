@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { ThemeProvider } from "@/hooks/useTheme";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppShell } from "@/components/AppShell";
 import { SonnerToaster } from "@/components/ui/sonner";
@@ -13,7 +14,7 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
-  <>
+  <ThemeProvider>
     <SonnerToaster />
     <BrowserRouter>
       <AuthProvider>
@@ -36,7 +37,7 @@ const App = () => (
         </Routes>
       </AuthProvider>
     </BrowserRouter>
-  </>
+  </ThemeProvider>
 );
 
 export default App;

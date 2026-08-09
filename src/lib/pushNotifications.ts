@@ -15,6 +15,9 @@ const urlBase64ToUint8Array = (base64String: string) => {
 
 export const registerServiceWorker = async () => {
   if (!("serviceWorker" in navigator)) return null;
+  // Never let the cache-first service worker hijack local dev — it would keep
+  // serving a stale bundle and hide every code change from the running app.
+  if (import.meta.env.DEV) return null;
   return navigator.serviceWorker.register("/sw.js");
 };
 

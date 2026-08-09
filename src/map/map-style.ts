@@ -1,8 +1,28 @@
-export const DARK_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+import { glProvider } from "./gl";
+
+// Mapbox Standard styles — dark is the classic Uber night look; light for day mode.
+export const DARK_STYLE = "mapbox://styles/mapbox/dark-v11";
+export const LIGHT_STYLE = "mapbox://styles/mapbox/light-v11";
+
+// MapLibre fallback (CartoDB) — used when VITE_MAP_PROVIDER=maplibre or no
+// Mapbox token is configured.
+export const CARTO_DARK_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+export const CARTO_LIGHT_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+
+export function resolveMapStyle(theme: "light" | "dark"): string {
+  if (glProvider === "mapbox") {
+    return theme === "dark" ? DARK_STYLE : LIGHT_STYLE;
+  }
+  return theme === "dark" ? CARTO_DARK_STYLE : CARTO_LIGHT_STYLE;
+}
+
+export const MAP_ACCESS_TOKEN =
+  (import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined) || undefined;
 
 export const MAP_CONFIG = {
+  // Slightly deeper pitch than before for a more dramatic "Uber" 3D feel.
   defaultZoom: 15,
-  defaultPitch: 45,
+  defaultPitch: 60,
   defaultBearing: 0,
   minZoom: 3,
   maxZoom: 20,

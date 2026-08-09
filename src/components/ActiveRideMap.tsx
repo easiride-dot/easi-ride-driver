@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapView, CameraController, LocationMarker, RouteLayer, MapControls } from "@/map";
 import { MAP_CONFIG } from "@/map/map-style";
+import { getMapboxDirections, type RoutePoint } from "@/map/directions";
 
 const FREETOWN_CENTER: [number, number] = MAP_CONFIG.freetownCenter;
 
@@ -29,21 +30,21 @@ export function ActiveRideMap({
   showDestination = true,
   onDurationChange,
 }: ActiveRideMapProps) {
-  const [routePoints, setRoutePoints] = useState<[number, number][]>([]);
-  const [tripRoutePoints, setTripRoutePoints] = useState<[number, number][]>([]);
+  const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
+  const [tripRoutePoints, setTripRoutePoints] = useState<RoutePoint[]>([]);
   const lastRouteFetch = useRef(0);
 
-  const driverPos = useMemo<[number, number] | null>(
+  const driverPos = useMemo<RoutePoint | null>(
     () => (driverLat != null && driverLon != null ? [driverLat, driverLon] : null),
     [driverLat, driverLon]
   );
 
-  const pickupPos = useMemo<[number, number] | null>(
+  const pickupPos = useMemo<RoutePoint | null>(
     () => (pickupLat != null && pickupLon != null ? [pickupLat, pickupLon] : null),
     [pickupLat, pickupLon]
   );
 
-  const destPos = useMemo<[number, number] | null>(
+  const destPos = useMemo<RoutePoint | null>(
     () =>
       destinationLat != null && destinationLon != null
         ? [destinationLat, destinationLon]
@@ -51,8 +52,8 @@ export function ActiveRideMap({
     [destinationLat, destinationLon]
   );
 
-  const fitPoints = useMemo<[number, number][]>(() => {
-    const pts: [number, number][] = [];
+  const fitPoints = useMemo<RoutePoint[]>(() => {
+    const pts: RoutePoint[] = [];
     if (driverPos) pts.push(driverPos);
     if (pickupPos && showPickup) pts.push(pickupPos);
     if (destPos && showDestination) pts.push(destPos);
@@ -67,20 +68,8 @@ export function ActiveRideMap({
     }
 
     const fetchTripRoute = async () => {
-      try {
-        const url = `https://router.project-osrm.org/route/v1/driving/${pickupPos[1]},${pickupPos[0]};${destPos[1]},${destPos[0]}?overview=full&geometries=geojson`;
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (data.code === "Ok" && data.routes?.[0]?.geometry?.coordinates) {
-          const coords: [number, number][] = data.routes[0].geometry.coordinates.map(
-            ([lon, lat]: [number, number]) => [lat, lon]
-          );
-          setTripRoutePoints(coords);
-        }
-      } catch {
-        setTripRoutePoints([pickupPos, destPos]);
-      }
+      const route = await getMapboxDirections(pickupPos, destPos);
+      setTripRoutePoints(route && route.points.length > 1 ? route.points : [pickupPos, destPos]);
     };
 
     fetchTripRoute();
@@ -100,26 +89,10 @@ export function ActiveRideMap({
     if (now - lastRouteFetch.current < 5000) return;
 
     const fetchRoute = async () => {
-      try {
-        const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
-        const res = await fetch(url);
-        const data = await res.json();
-        lastRouteFetch.current = Date.now();
-
-        if (data.code === "Ok" && data.routes?.[0]?.geometry?.coordinates) {
-          const coords: [number, number][] = data.routes[0].geometry.coordinates.map(
-            ([lon, lat]: [number, number]) => [lat, lon]
-          );
-          setRoutePoints(coords);
-          onDurationChange?.(data.routes[0]?.duration || null);
-        } else {
-          setRoutePoints(start && end ? [start, end] : []);
-          onDurationChange?.(null);
-        }
-      } catch {
-        setRoutePoints(start && end ? [start, end] : []);
-        onDurationChange?.(null);
-      }
+      lastRouteFetch.current = Date.now();
+      const route = await getMapboxDirections(start, end);
+      setRoutePoints(route && route.points.length > 1 ? route.points : [start, end]);
+      onDurationChange?.(route ? route.durationSeconds : null);
     };
 
     fetchRoute();

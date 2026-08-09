@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Source, Layer } from "react-map-gl/maplibre";
+import { Source, Layer } from "./gl";
 
 interface RouteLayerProps {
   points: [number, number][];
@@ -8,7 +8,10 @@ interface RouteLayerProps {
   width?: number;
 }
 
-export function RouteLayer({ points, id = "route", color = "#3b82f6", width = 6 }: RouteLayerProps) {
+const DEFAULT_INNER = "#3b82f6";
+const DEFAULT_CASING = "#0f172a";
+
+export function RouteLayer({ points, id = "route", color = DEFAULT_INNER, width = 6 }: RouteLayerProps) {
   const [opacity, setOpacity] = useState(0);
 
   const geojson = useMemo(() => {
@@ -33,21 +36,33 @@ export function RouteLayer({ points, id = "route", color = "#3b82f6", width = 6 
 
   if (!geojson) return null;
 
+  const sourceId = `${id}-source`;
+  const base = { type: "line" as const, source: sourceId };
+
   return (
-    <Source id={`${id}-source`} type="geojson" data={geojson}>
+    <Source id={sourceId} type="geojson" data={geojson}>
+      {/* Casing — dark outline that makes the route pop on a tilted/dark map,
+          the signature "Uber" route look. */}
+      <Layer
+        id={`${id}-casing`}
+        {...base}
+        layout={{ "line-cap": "round", "line-join": "round" }}
+        paint={{
+          "line-color": DEFAULT_CASING,
+          "line-width": width + 2,
+          "line-opacity": 0.9 * opacity,
+        }}
+      />
+      {/* Inner colored line + subtle glow */}
       <Layer
         id={`${id}-line`}
-        type="line"
-        source={`${id}-source`}
-        layout={{
-          "line-cap": "round",
-          "line-join": "round",
-        }}
+        {...base}
+        layout={{ "line-cap": "round", "line-join": "round" }}
         paint={{
           "line-color": color,
           "line-width": width,
           "line-opacity": 0.85 * opacity,
-          "line-blur": 0,
+          "line-blur": width > 4 ? 0.5 : 0,
         }}
       />
     </Source>
